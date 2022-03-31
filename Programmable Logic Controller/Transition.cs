@@ -60,10 +60,15 @@ namespace IngameScript
                 if (!this.enabled()) return false;
                 this.timerRemaining -= tickCount;
                 if (this.timerRemaining > 0) return false;
-                this.timerRemaining = this.timer;
+                resetTimer();
                 foreach (Place p in this.inFlows) p.exit();
                 foreach (Place p in this.outFlows) p.enter();
                 return true;
+            }
+
+            public void resetTimer()
+            {
+                this.timerRemaining = this.timer;
             }
         }
     }

@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="utf-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1" />
+ <title>Space Engineers Petri Net Editor</title>
+ <style>
+   /* https://coolors.co/002082-3057e1-ced8f7-fcd0a1-2e2623 */
+body {
+ display: grid;
+ grid-template-areas: 
+  "toolbar    toolbar"
+  "document   document";
+ grid-template-rows: 40px 1fr;
+ grid-template-columns: 4fr 1fr;
+ width: 100vw;
+ height: 100vh;
+ overflow-x: hidden;
+ overflow-y: hidden;
+ margin: 0;
+ padding: 0;
+}
+#toolbar {
+ grid-area: toolbar;
+ background-color: #3057E1;
+ overflow-x: hidden;
+ overflow-y: hidden;
+ display: flex;
+ align-items: center;
+}
+#help {
+ grid-area: help;
+ overflow-x: hidden;
+ overflow-y: auto;
+ padding: 20px;
+ background-color: #fcd0a1;
+}
+#document {
+ grid-area: document;
+ background-color: #002082;
+ overflow-x: auto;
+ overflow-y: auto;
+ background-image: url("./img/document-bg.svg");
+ background-position: top left;
+ background-repeat: repeat-x repeat-y;
+}
+#document .place .mark {
+ display: none;
+}
+#document .place.marked .mark {
+ display: inline;
+}
+#template-place, #template-transition, #template-flow { display: none }
+#markings {
+  padding-left: 60px;
+}
+#markings label {
+  color: #CED8F7;
+}
+#markings #markings-wrapper {
+ background: #002082;
+ padding: 4px 10px;
+ border: 1px solid #ced8f7;
+}
+#markings span.marking {
+ background-color: #ced8f7;
+ padding: 0 0px 0 10px;
+ border-radius: 12px;
+ border: 1px solid transparent;
+ cursor: pointer;
+ margin-right: 5px;
+}
+#markings span.delete {
+ color: #00000044;
+ padding-left: 10px;
+ padding-right: 7px;
+ font-size: 60%;
+ position: relative;
+ top: -2px;
+}
+#markings span.marking.active {
+ background-color: #FCD0A1;
+ border-color: #2E2623;
+ color: #2E2623;
+}
+#markings input:focus,
+#markings input:focus-visible,
+#markings input:active,
+#markings input {
+ outline: none;
+ border: none;
+ background-color: #002082;
+ color: #ced8f7;
+ margin-left: 5px;
+}
+#toolbar form {
+ margin-right: 30px;
+}
+#toolbar #toolbar-load-file { display: none; }
+#toolbar button {
+ margin-left: 5px;
+ margin-right: 5px;
+ background-image: none;
+ background-color: #ced8f7;
+ outline: none;
+ border: 1px solid #2E2623;
+ color: #2E2623;
+ border-radius: 5px;
+ padding: 4px 20px;
+}
+#toolbar button.toggled {
+ background-color: #FCD0A1;
+}
+.dialog-overlay {
+ position: absolute;
+ top: 0; 
+ left: 0;
+ width: 100vw;
+ height: 100vh;
+ display: grid;
+ grid-template-rows: 20% 1fr 20%;
+ grid-template-columns: 20% 1fr 20%;
+ background: #000000aa;
+}
+#transition-dialog > form,
+#place-dialog > form {
+ padding: 50px;
+ border-radius: 10px;
+ background-color: white;
+ grid-row: 2;
+ grid-column: 2;
+ display: grid;
+ grid-template-columns: minmax(min-content, 1fr) 4fr;
+ grid-template-rows: min-content;
+ grid-row-gap: 20px;
+ grid-column-gap: 10px;
+ overflow-y: auto;
+}
+#transition-dialog > form > *,
+#place-dialog > form > * {
+ grid-column: 2;
+}
+#transition-dialog > form > label,
+#place-dialog > form > label {
+ grid-column: 1;
+}
+
+ </style>
+</head>
+ <body>
+  <div id="toolbar">
+    <form id="markings">
+     <label>Markings: </label>
+     <span id="markings-wrapper">
+      <span class="marking active">main<span class="delete">X</span></span><input name="new-marking" class="marking" id="new-marking">
+     </span>
+    </form>
+    <input type="file" id="toolbar-load-file">
+    <button id="toolbar-load">Load</button>
+    <button id="toolbar-save">Save</button>
+    <button id="toolbar-compile">Compile</button>
+    <button id="toolbar-resetview">Reset view</button>
+    <button id="toolbar-help">Show help</button>
+  </div>
+  <div id="help" style="display: none">
+   <h1>Usage instructions</h1>
+   <p>You can move around the document by dragging the document with the mouse</p>
+   <p>Clicking on a place or a transition allows you to edit its parameters</p>
+   <p>Dragging a place or a transition moves it. You may press Ctrl while dragging to disable snap-to-grid.</p>
+   <h2>Creating elements</h2>
+   <dl>
+     <dt>Creating a place</dt>
+     <dd>Press "p" then click on the document</dd>
+     <dt>Creating a transition</dt>
+     <dd>Press "t" then click on the document</dd>
+     <dt>Creating a flow</dt>
+     <dd>Press "f" then click a place then a transition (inflow), or a transition and then a place (outflow)</dd>
+     <dt>Creating a marking</dt>
+     <dd>Type the marking name in the "Markings" input in the toolbar, followed by a space or a comma</dd>
+     <dt>Creating/removing a marking token</dt>
+     <dd>Activate the desired marking by clicking on it in the toolbar, if needed, then press "m" and click a place</dd>
+   </dl>
+   <h2>Deleting elements</h2>
+   <p>Press "del" then click the element to delete</p>
+   <h2>Using the script in Space Engineers</h2>
+   <p>When your script is ready, click "Compile" on the toolbar. The script code will be copied to your clipboard.</p>
+   <p>Then, in Space Engineers, edit a Programmable Block, and paste the code.</p>
+   <p>Run the script with a single parameter: The marking to be used. You can do so directly in the parameter block, or using buttons.</p>
+   <p>Note that if you run the script with no parameters, no tokens will be present in any place, so the program will do nothing. This also means you need at least one marking in the petri net.</p>
+   <p>If the program is running and gets called with a new marking, the current state is discarded and the petri net restarts with the new marking. The petri net is reset to the state defined by the marking. i.e. all tokens are removed, without running exit functions, and marking tokens are assigned, without running entry functions.</p>
+
+
+  </div>
+  <svg  id="document"
+        version="1.1"
+        baseProfile="full"
+        xmlns="https://www.w3.org/2000/svg"
+        height="100%" width="100%">
+   <defs>
+    <marker id="triangle" viewBox="0 0 20 20"
+     refX="20" refY="10"
+     markerUnits="strokeWidth"
+     markerWidth="20" markerHeight="20"
+     orient="auto">
+     <path d="M 0 0 L 20 10 L 0 20 z" fill="#ced8f7"/>
+    </marker>
+   </defs>
+   <g 
+    id="template-place"
+    class="place"> 
+    <circle
+     style="fill:#ced8f7;stroke:#ced8f7;stroke-width:1;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+     cx="200"
+     cy="200"
+     r="20"
+    />
+    <circle
+     style="fill:#2E2623;stroke:#2E2623;stroke-width:1;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none"
+     cx="200"
+     cy="210"
+     r="5"
+     class="mark"
+    />
+    <text
+     x="230"
+     Y="217"
+     fill="#ced8f7"
+     font-family="monospace"
+    > </text>
+   </g>
+   <rect
+    style="fill:#ced8f7;fill-opacity:1;stroke:#ced8f7;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+    width="60"
+    height="6"
+    x="170"
+    y="280"
+    ry="3"
+    class="transition"
+    id="template-transition" />
+   <path
+    style="fill:none;stroke:#ced8f7;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#triangle)"
+    d="M 200,200 200,270"
+    id="template-flow"
+    class="flow"
+    />
+  </svg>
+  <div id="place-dialog" class="dialog-overlay" style="display: none">
+   <form id="place-form">
+     <label for="name">Name:</label><input name="name" type="text">
+     <label for="entryFunc">Entry Function:</label> <textarea name="entryFunc"></textarea>
+     <label for="tickFunc">Tick Function:</label><textarea name="tickFunc"></textarea>
+     <label for="exitFunc">Exit Function:</label><textarea name="exitFunc"></textarea>
+     <div class="help">
+      <h1>Instructions</h1>
+      <p>The place name must be unique</p>
+      <p>The entry function, if not empty, is executed once, when the first token enters the place. The exit function, if not empty, is executed also once, when the last token exits the place. The tick function, if not empty, is executed everytime the script is run by the game code and there are tokens in the place. 
+        Note that, despite the name, this may be less than once per tick, because the script execution frequency may be once per tick or once per 10 ticks or once per 100 ticks.</p>
+      <p>These functions must receive one parameter, the petriNet. The petriNet provides two important methods:</p>
+      <p>A method to retrieve a block by name</p>
+      <code>petriNet.block&lt;TypeOfBlock&gt;("name_of_block")</code>
+      <p>and a method to retrieve all blocks of a given type from a block group, by group name, optionally acting on every group member. This method returns a C# list.</p>
+      <code>petriNet.blocks&lt;TypeOfBlock&gt;("name_of_block_group", optional_function_to_apply_to_blocks)</code>
+      <p>Sample code:</p>
+      <code>(petriNet) => { petriNet.block&lt;IMyPistonBase&gt;("MyPiston").Velocity = (float) 1.2; }</code>
+      <p>or</p>
+      <code>(petriNet) => { petriNet.blocks&lt;IMyPistonBase&gt;("MyPistonGroup", (piston) => piston.Velocity = (float) 1.2); }</code>
+      <p>Lookup block types and available members for each type in the excellent <a href="https://github.com/malware-dev/MDK-SE/wiki/Namespace-Index">MDK Reference</a></p>
+     </div>
+   </form>
+  </div>
+  <div id="transition-dialog" class="dialog-overlay" style="display: none">
+   <form id="transition-form">
+     <label for="enabledTest">Enabled test:</label> <textarea name="enabledTest"></textarea>
+     <label for="timer">Delay timer:</label><input type="number" ste="1" name="timer">
+     <label for="updateFrequency">Update Frequency:</label><select name="updateFrequency">
+       <option value="100">Every 100 ticks</option>
+       <option value="10">Every 10 ticks</option>
+       <option value="1">Every tick</option>
+     </select>
+     <div class="help">
+      <h1>Instructions</h1>
+      <p>A transition is enabled if:</p>
+      <ul>
+        <li>All input places — places connected via input flows — have at least one token</li>
+        <li>The enabled test function is empty or returns true</li>
+      </ul>
+      <p>The transition is tested, or the script is run, at least at the given frequency: every 1, 10 or 100 game ticks. Be conservative: use as large a tick interval as possible, as to minimize impact of the script on game performance.</p>
+      <p>On every script run, if the transition is enabled, its delay counter is decremented by the relevant number of game ticks. Once it reaches zero, the transition fires. Setting the delay timer to 1 creates a transition with no delay</p>
+      <p>Firing a transition removes one token from every place connected via input flows, and adds one token to every place connected via output flows. After firing, the delay timer is reset.</p>
+      <p>If the transition is disabled while waiting for the delay, the timer is <b>not</b> reset. It will continue counting down from its present value whenever the transition gets enabled again.</p>
+      <p>The enabled test is only executed if tokens are present on all input places</p>
+      <p>The enabled test is a function that receives a petriNet object and must return a boolean (true if the transition is enabled)</p>
+      <p>The petriNet provides two important methods:</p>
+      <p>A method to retrieve a block by name</p>
+      <code>petriNet.block&lt;TypeOfBlock&gt;("name_of_block")</code>
+      <p>and a method to retrieve all blocks of a given type from a block group, by group name, optionally acting on every group member. This method returns a C# list</p>
+      <code>petriNet.blocks&lt;TypeOfBlock&gt;("name_of_block_group", optional_function_to_apply_to_blocks)</code>
+      <p>Sample code:</p>
+      <code>(petriNet) => petriNet.block&lt;IMyLandingGear&gt;("FrontLandingGear").IsLocked</code>
+      <p>or</p>
+      <code>(petriNet) => { float totalThrust = 0; foreach (IMyThrust t in petriNet.blocks&lt;IMyThrust&gt;("AtmosphericThrusters")) totalThrust += t.CurrentThrust; return t > 1000; }</code>
+      <p>Lookup block types and available members for each type in the excellent <a href="https://github.com/malware-dev/MDK-SE/wiki/Namespace-Index">MDK Reference</a></p>
+     </div>
+   </form>
+  </div>
+  <script type="text/javascript" src="js/array-intersect.js"></script>
+  <script type="text/javascript" src="js/element-query.js"></script>
+  <script type="text/javascript" src="js/mutation-event-attacher.js"></script>
+  <script type="text/javascript" src="js/templateNode.js"></script>
+  <script type="text/javascript" src="js/draggable-svg.js"></script>
+  <script type="text/javascript">
+document.getElementById('document').addEventListener('mousedown', (evt) => {
+ if (evt.target != document.getElementById('document')) return;
+ if (window.activeOperation) return;
+ window.activeOperation = {
+  type: "drag-document",
+  origin: { x: evt.clientX, y: evt.clientY },
+  viewBox: evt.target.getAttribute('viewBox').split(' ').map( (val) => parseInt(val) )
+ }
+});
+document.getElementById('document').addEventListener('mousemove', (evt) => {
+ if (evt.target != document.getElementById('document')) return;
+ if (!window.activeOperation || window.activeOperation.type != 'drag-document') return;
+ let delta = { 
+   x: evt.clientX - activeOperation.origin.x, 
+   y: evt.clientY - activeOperation.origin.y, 
+ };
+ evt.target.setAttribute("viewBox", [
+   activeOperation.viewBox[0] - delta.x,
+   activeOperation.viewBox[1] - delta.y,
+   activeOperation.viewBox[2],
+   activeOperation.viewBox[3],
+ ].join(" "));
+ evt.target.style.backgroundPosition = "" + (-(activeOperation.viewBox[0] - delta.x)) + "px " + (-(activeOperation.viewBox[1] - delta.y)) + "px";
+
+});
+document.getElementById('document').addEventListener('mouseup', (evt) => {
+ if (evt.target != document.getElementById('document')) return;
+ if (!window.activeOperation || window.activeOperation.type != 'drag-document') return;
+ window.activeOperation = null;
+});
+  </script>
+  <script type="text/javascript">
+// Toolbar handlers    
+document.getElementById('toolbar-compile').addEventListener('click', function(evt) {
+  let initializationCode = 
+    "    this.petriNet.addPlace( new Place[] {\n"
+    + document
+     .getElementById('document')
+     .queryElements('xpath:.//*[contains(@class, "place")]') 
+     .filter( (place) => place.getAttribute('id') != 'template-place' )
+     .map( (place) => "        new Place(" 
+      + [
+       '"' +  (place.petriName ? place.petriName : "") + '"', 
+       place.petriEntryFunc && place.petriEntryFunc.trim() != "" ? place.petriEntryFunc.trim() : "null",
+       place.petriTickFunc && place.petriTickFunc.trim() != "" ? place.petriTickFunc.trim() : "null",
+       place.petriExitFunc && place.petriExitFunc.trim() != "" ? place.petriExitFunc.trim() : "null",
+      ].join(", ")
+      + ")"
+     )
+     .join(",\n")
+    + "\n"
+    + "    });\n"
+    + "    this.petriNet.addTransition( new Transition[] {\n"
+    + document
+     .getElementById('document')
+     .queryElements('xpath:.//*[contains(@class, "transition")]') 
+     .filter( (transition) => transition.getAttribute('id') != 'template-transition' )
+     .map( (transition) => "        new Transition(\n" 
+      + [
+        "this.petriNet.getPlace( new string[] { " 
+        + document
+          .getElementById('document')
+          .queryElements('xpath:.//*[contains(@class, "flow")]') 
+          .filter( (flow) => flow.to == transition )
+          .map( (flow) => '"' + (flow.from.petriName ? flow.from.petriName : "") + '"')
+          .join(", ") 
+        + " }",
+        " new string[] { "
+        + document
+           .getElementById('document')
+           .queryElements('xpath:.//*[contains(@class, "flow")]') 
+           .filter( (flow) => flow.from == transition )
+           .map( (flow) => '"' + (flow.to.petriName ? flow.to.petriName : "") + '"')
+           .join(", ")
+        + " }",
+        transition.petriEnabledTest && transition.petriEnabledTest.trim() != "" ? transition.petriEnabledTest.trim() : "null",
+        transition.petriTimer ? transition.petriTimer : "1",
+        transition.petriUpdateFrequency ? ("UpdateFrequency.Update" + transition.petriUpdateFrequency) : "UpdateFrequency.Update100"
+      ].map( (line) => "            " + line).join(",\n")
+      + ")"
+     )
+     .join(",\n")
+    + "\n"
+    + "    });\n"
+   + document
+    .getElementById('document')
+    .queryElements('xpath:.//*[contains(@class, "place")]') 
+    .filter( (place) => place.getAttribute('id') != 'template-place' )
+    .map( (place) => place.markings )
+    .flat()
+    .filter( (value, index, self) => self.indexOf(value) == index )
+    .sort()
+    .reverse()
+    .map( (marking) => '    this.petriNet.addMarking("' 
+                       + marking 
+                       + '", new string[] { ' 
+                       + document
+                         .getElementById('document')
+                         .queryElements('xpath:.//*[contains(@class, "place")]') 
+                         .filter( (place) => place.markings && place.markings.includes(marking) )
+                         .map( (place) => '"' + (place.petriName ? place.petriName : "") + '"' )
+                         .join(", ")
+                       + " });")
+    .join("\n");
+  let sourceCode = document
+                    .getElementById('script-source-template')
+                    .firstChild
+                    .data
+                    .split(/\n/)
+                    .slice(1, -1)
+                    .map( (line) => line == "// GENERATED CODE GOES HERE" ? initializationCode : line)
+                    .join("\n");
+  navigator.clipboard.writeText(sourceCode);
+});
+document.getElementById('toolbar-help').addEventListener('click', function(evt) {
+ if (evt.target.classList.contains("toggled")) {
+   evt.target.classList.remove("toggled");
+   document.body.style.removeProperty('grid-template-areas');
+   document.getElementById('help').style.display = "none";
+ } else {
+   evt.target.classList.add("toggled");
+   document.body.style.gridTemplateAreas = '"toolbar    toolbar" "document   help"'
+   document.getElementById('help').style.display = "block";
+ }
+ document.getElementById('toolbar-resetview').click();
+});
+document.getElementById('toolbar-resetview').addEventListener('click', function() {
+  let svg = document.getElementById('document');
+  svg.setAttribute("viewBox", "0 0 " + svg.clientWidth + " " + svg.clientHeight);
+  svg.style.backgroundPosition = "top left";
+});
+window.addEventListener("load", (ev) => document.getElementById('toolbar-resetview').click());
+document.getElementById('toolbar-load').addEventListener('click', function() {
+  document.getElementById('toolbar-load-file').click();
+});
+document.getElementById('toolbar-load-file').addEventListener('change', function(evt) {
+  let file = evt.target.files[0];
+	let reader = new FileReader();
+	reader.addEventListener('load', function(e) {
+	  let toLoad = JSON.parse(e.target.result);
+    let svg = document.getElementById('document');
+    document
+      .getElementById('document')
+      .queryElements('xpath:.//*[contains(@class, "flow") or contains(@class, "place") or contains(@class, "transition")]') 
+      .filter( (node) => node.getAttribute('id') != 'template-flow' )
+      .filter( (node) => node.getAttribute('id') != 'template-place' )
+      .filter( (node) => node.getAttribute('id') != 'template-transition' )
+      .forEach( (node) => node.remove() );
+    toLoad.places.forEach( (data) => {
+      let place = svg.appendChild(document.getElementById('template-place').templateNode(true , {
+        "xpath:./*[local-name()='circle']/@cx": data.x,
+        "xpath:./*[local-name()='circle']/@cy": data.y,
+        "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cx": data.x,
+        "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cy": data.y + 10,
+        "xpath:./*[local-name()='text']/@x": data.x + 20 /* radius */ + 10 /* margin */,
+        "xpath:./*[local-name()='text']/@y": data.y + 20 /* radius */ - 3 /* underhang */,
+      }));
+      place.petriName = data.name;
+      place.petriEntryFunc = data.entryFunc;
+      place.petriTickFunc = data.tickFunc;
+      place.petriExitFunc = data.exitFunc;
+      place.markings = data.markings;
+      let nameText = place.queryElement("xpath:.//*[local-name() = 'text']");
+      while(nameText.firstChild) nameText.removeChild(nameText.firstChild);
+      nameText.append(document.createTextNode(place.petriName));
+    });
+    toLoad.transitions.forEach( (data) => {
+      let transition = svg.appendChild(document.getElementById('template-transition').templateNode(true , {
+        "xpath:./@x": data.x,
+        "xpath:./@y": data.y,
+      }));
+      transition.petriEnabledTest = data.enabledTest;
+      transition.petriTimer = data.timer;
+      transition.petriUpdateFrequency = data.updateFrequency;
+      data.inflows.forEach( (placeName) => {
+        let flow = document.getElementById('document').appendChild(document.getElementById('template-flow').templateNode(true , {}));
+        flow.from = document
+          .getElementById('document')
+          .queryElements('xpath:.//*[contains(@class, "place")]') 
+          .filter( (place) => place.petriName == placeName )
+          [0];
+        flow.to = transition;
+      });
+      data.outflows.forEach( (placeName) => {
+        let flow = document.getElementById('document').appendChild(document.getElementById('template-flow').templateNode(true , {}));
+        flow.from = transition;
+        flow.to = document
+          .getElementById('document')
+          .queryElements('xpath:.//*[contains(@class, "place")]') 
+          .filter( (place) => place.petriName == placeName )
+          [0];
+      });
+    });
+    document
+      .getElementById('document')
+      .queryElements('xpath:.//*[contains(@class, "flow")]') 
+      .filter( (place) => place.getAttribute('id') != 'template-flow' )
+      .forEach( window.redrawFlow );
+    document.getElementById('markings-wrapper').queryElements('xpath:./span').forEach( (span) => span.remove() );
+    document
+      .getElementById('document')
+      .queryElements('xpath:.//*[contains(@class, "place")]') 
+      .filter( (place) => place.getAttribute('id') != 'template-place' )
+      .map( (place) => place.markings )
+      .flat()
+      .filter( (value, index, self) => self.indexOf(value) == index )
+      .sort()
+      .reverse()
+      .forEach( (marking) => {
+        let span = document.getElementById('markings-wrapper').insertBefore(document.createElement('span'), document.getElementById('markings-wrapper').firstChild);
+        span.classList.add('marking');
+        span.appendChild(document.createTextNode(marking));
+        span = span.appendChild(document.createElement('span'));
+        span.appendChild(document.createTextNode("X"));
+        span.classList.add("delete");
+      });
+    if (document.getElementById('markings-wrapper').queryElement('xpath:./span')) document.getElementById('markings-wrapper').queryElement('xpath:./span').classList.add("active");
+    redrawCurrentMarking();
+	});
+	reader.readAsText(file);
+});
+document.getElementById('toolbar-save').addEventListener('click', function() {
+  let payload = {
+    "version": "1.0",
+    "places": document
+     .getElementById('document')
+     .queryElements('xpath:.//*[contains(@class, "place")]') 
+     .filter( (place) => place.getAttribute('id') != 'template-place' )
+     .map( (place) => {
+       return {
+         "name": place.petriName ?? "",
+         "entryFunc": place.petriEntryFunc ?? "",
+         "tickFunc": place.petriTickFunc ?? "",
+         "exitFunc": place.petriExitFunc ?? "",
+         "markings": place.markings ?? [],
+         "x": parseInt(place.queryElement("xpath:(./*[local-name() = 'circle'])[position() = 1]/@cx").value),
+         "y": parseInt(place.queryElement("xpath:(./*[local-name() = 'circle'])[position() = 1]/@cy").value)
+       };
+      }),
+    "transitions": document
+     .getElementById('document')
+     .queryElements('xpath:.//*[contains(@class, "transition")]') 
+     .filter( (place) => place.getAttribute('id') != 'template-transition' )
+     .map( (transition) => {
+       return {
+         "enabledTest": transition.petriEnabledTest ?? "",
+         "timer": parseInt(transition.petriTimer ?? "1"),
+         "updateFrequency": parseInt(transition.petriTimer ?? "1"),
+         "x": parseInt(transition.queryElement("xpath:./@x").value),
+         "y": parseInt(transition.queryElement("xpath:./@y").value),
+         "inflows": document
+          .getElementById('document')
+          .queryElements('xpath:.//*[contains(@class, "flow")]') 
+          .filter( (flow) => flow.to == transition )
+          .map( (flow) => flow.from.petriName ?? "" ),
+         "outflows": document
+          .getElementById('document')
+          .queryElements('xpath:.//*[contains(@class, "flow")]') 
+          .filter( (flow) => flow.from == transition )
+          .map( (flow) => flow.to.petriName ?? "" ),
+       };
+      })
+    };
+    let a = document.createElement('a');
+    a.setAttribute('href', 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload)));
+    a.setAttribute('download', "saved.petrinet");
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+});
+  </script>
+  <script type="text/javascript">
+document.getElementById('place-dialog').show = function(place) {
+ let form = this.queryElement("xpath:.//form");
+ if (!place.petriName) place.petriName = "";
+ if (!place.petriEntryFunc) place.petriEntryFunc = "";
+ if (!place.petriTickFunc) place.petriTickFunc = "";
+ if (!place.petriExitFunc) place.petriExitFunc = "";
+ form.queryElement("xpath:.//*[@name='name']").value = place.petriName;
+ form.queryElement("xpath:.//*[@name='entryFunc']").value = place.petriEntryFunc;
+ form.queryElement("xpath:.//*[@name='tickFunc']").value = place.petriTickFunc;
+ form.queryElement("xpath:.//*[@name='exitFunc']").value = place.petriExitFunc;
+ this.currentPlace = place;
+ this.style.removeProperty('display');
+}
+document.getElementById('place-dialog').dismiss = function() {
+ if (this.style.display && this.style.display == "none") return;
+ let form = this.queryElement("xpath:.//form");
+ this.currentPlace.petriName =  form.queryElement("xpath:.//*[@name='name']").value;
+ this.currentPlace.petriEntryFunc = form.queryElement("xpath:.//*[@name='entryFunc']").value;
+ this.currentPlace.petriTickFunc = form.queryElement("xpath:.//*[@name='tickFunc']").value;
+ this.currentPlace.petriExitFunc = form.queryElement("xpath:.//*[@name='exitFunc']").value;
+ let nameText = this.currentPlace.queryElement("xpath:.//*[local-name() = 'text']");
+ while(nameText.firstChild) nameText.removeChild(nameText.firstChild);
+ nameText.append(document.createTextNode(this.currentPlace.petriName));
+ delete this.currentPlace;
+ this.style.display = "none";
+}
+document.getElementById('transition-dialog').show = function(transition) {
+ let form = this.queryElement("xpath:.//form");
+ if (!transition.petriEnabledTest) transition.petriEnabledTest = "";
+ if (!transition.petriTimer) transition.petriTimer = "1";
+ if (!transition.petriUpdateFrequency) transition.petriUpdateFrequency = "100";
+ form.queryElement("xpath:.//*[@name='enabledTest']").value = transition.petriEnabledTest;
+ form.queryElement("xpath:.//*[@name='timer']").value = transition.petriTimer;
+ form.queryElement("xpath:.//*[@name='updateFrequency']").value = transition.petriUpdateFrequency;
+ this.currentTransition = transition;
+ this.style.removeProperty('display');
+}
+document.getElementById('transition-dialog').dismiss = function(place) {
+ if (this.style.display && this.style.display == "none") return;
+ let form = this.queryElement("xpath:.//form");
+ this.currentTransition.petriEnabledTest = form.queryElement("xpath:.//*[@name='enabledTest']").value;
+ this.currentTransition.petriTimer = form.queryElement("xpath:.//*[@name='timer']").value;
+ this.currentTransition.petriUpdateFrequency = form.queryElement("xpath:.//*[@name='updateFrequency']").value;
+ delete this.currentTransition;
+ this.style.display = "none";
+}
+new MutationEventAttacher(document.body, 'css:.dialog-overlay', 'click', (e) => { if (e.target.dismiss) e.target.dismiss(); });
+new MutationEventAttacher(document.getElementById('document'), "xpath:./*[contains(@class, 'place')]", 'click', (e) => { 
+ let target = e.target.queryElement("xpath:./ancestor-or-self::*[contains(@class, 'place')]");
+ if (window.activeOperation) return;
+ if (target.skipNextClick) {
+  delete target.skipNextClick;
+  return;
+ }
+ document.getElementById('place-dialog').show(target);
+});
+new MutationEventAttacher(document.getElementById('document'), "xpath:./*[contains(@class, 'transition')]", 'click', (e) => { 
+ let target = e.target.queryElement("xpath:./ancestor-or-self::*[contains(@class, 'transition')]");
+ if (window.activeOperation) return;
+ if (target.skipNextClick) {
+  delete target.skipNextClick;
+  return;
+ }
+ document.getElementById('transition-dialog').show(target);
+});
+document.getElementsByTagName("body").item(0).addEventListener('keydown', (e) => {
+ if (e.keyCode != 27) return;
+ document.getElementById('place-dialog').dismiss();
+ document.getElementById('transition-dialog').dismiss();
+});
+      
+
+  </script>
+  <script type="text/javascript">
+// Behaviour of the markings text input
+new MutationEventAttacher(document.getElementById('markings'), 'css:span.marking span.delete', 'click', (e) => {
+ e.preventDefault();
+ e.stopPropagation();
+ e.target.parentNode.remove();
+ redrawCurrentMarking();
+});
+new MutationEventAttacher(document.getElementById('markings'), 'css:span.marking', 'click', (e) => {
+ e.preventDefault();
+ e.stopPropagation();
+ e.target.parentNode.queryElements('css:span.marking.active').forEach( (span) => span.classList.remove('active') );
+ e.target.classList.add('active');
+ redrawCurrentMarking();
+});
+new MutationEventAttacher(document.getElementById('markings'), 'css:input', 'input', (e) => {
+  let value = e.target.value.split(/[ ,;]/);
+  if (value.length < 2) return;
+  e.target.value = value.pop();
+  value.forEach( (marking) => {
+    e.target.parentNode.queryElements('css:span.marking.active').forEach( (span) => span.classList.remove('active') );
+    let outerSpan = document.createElement('SPAN');
+    let innerSpan = document.createElement('SPAN');
+    outerSpan.classList.add("marking");
+    outerSpan.classList.add("active");
+    innerSpan.classList.add("delete");
+    innerSpan.appendChild(document.createTextNode('X'));
+    outerSpan.appendChild(document.createTextNode(marking));
+    outerSpan.appendChild(innerSpan);
+    e.target.parentNode.insertBefore(outerSpan, e.target);
+  })
+  redrawCurrentMarking();
+});
+new MutationEventAttacher(document.getElementById('markings'), 'css:input', 'keydown', (e) => {
+  if (e.keyCode == 13) {
+    e.stopPropagation();
+    e.preventDefault();
+    return;
+  }
+  if (e.keyCode == 8 && e.target.value == "") {
+    let lastMarking = e.target.parentNode.queryElements('css:span.marking');
+    if (lastMarking.length == 0) return;
+    lastMarking = lastMarking.pop();
+    let value = lastMarking.queryElement("xpath:./text()").wholeText;
+    lastMarking.remove();
+    e.target.value = value;
+    redrawCurrentMarking();
+  }
+});
+window.redrawCurrentMarking = function() {
+ document.getElementById('document').queryElements("xpath:./*[contains(@class, 'place')]").forEach( (place) => place.classList.remove('marked'));
+ let active = document.getElementById('markings').queryElement('css:span.marking.active');
+ if (!active) {
+   active = document.getElementById('markings').queryElement('css:span.marking');
+   if (!active) return;
+   active.classList.add('active');
+ }
+ active = active.queryElement('xpath:./text()').wholeText;
+ document
+  .getElementById('document')
+  .queryElements("xpath:./*[contains(@class, 'place')]")
+  .filter( (place) => place.markings && place.markings.includes(active) )
+  .forEach( (place) => place.classList.add('marked'));
+}
+  </script>
+  <script type="text/javascript">
+    // Make transitions and places draggable
+    new DraggableSVG(
+      document.getElementById('document'),
+      "xpath:./*[contains(@class, 'place')]",
+      {
+        "x": [ "xpath:.//@cx", "xpath:.//@x" ],
+        "y": [ "xpath:.//@cy", "xpath:.//@y" ],
+      }
+      , { "x": 100, "y": 100 }
+    );
+    new DraggableSVG(
+      document.getElementById('document'),
+      "xpath:./*[contains(@class, 'transition')]",
+      {
+        "x": [ "xpath:.//@x" ],
+        "y": [ "xpath:.//@y" ],
+      }
+      , { "x": 100, "y": 100, "offset": { "x": 30, "y": 6 } }
+    );
+    new MutationEventAttacher(document.getElementById('document'), "xpath:./*[contains(@class, 'place') or contains(@class, 'transition')]", "drag", (ev) => {
+      ev.target.parentNode
+       .queryElements("xpath:.//*[contains(@class, 'flow')]")
+       .filter( (flow) => flow.from == ev.target || flow.to == ev.target )
+       .forEach( window.redrawFlow );
+      ev.target.queryElement('xpath:./ancestor-or-self::*[contains(@class, "place") or contains(@class, "transition")]').skipNextClick = true;
+    });
+
+  </script>
+  <script type="text/javascript">
+// Insert place interaction
+document.getElementsByTagName("body").item(0).addEventListener('keydown', (e) => {
+ if (e.target != document.body) return;
+ if (e.key != "p" || e.altKey || e.shiftKey || e.ctrlKey) return;
+ e.preventDefault();
+ window.activeOperation = {
+  type: "insert-place"
+ }
+});
+document.getElementsByTagName("body").item(0).addEventListener('click', (e) => {
+ if (!window.activeOperation || window.activeOperation.type != 'insert-place') return;
+ let svg = document.getElementById('document');
+ if (e.target != svg) return;
+ let place = svg.appendChild(document.getElementById('template-place').templateNode(true , {
+  "xpath:./*[local-name()='circle']/@cx": e.clientX,
+  "xpath:./*[local-name()='circle']/@cy": e.clientY - 40 /* toolbar */,
+  "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cx": e.clientX,
+  "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cy": e.clientY - 40 /* toolbar */ + 10,
+  "xpath:./*[local-name()='text']/@x": e.clientX + 20 /* radius */ + 10 /* margin */,
+  "xpath:./*[local-name()='text']/@y": e.clientY - 40 /* toolbar */ + 20 /* radius */ - 3 /* underhang */,
+ }));
+ window.activeOperation = null;
+});
+// Insert transition interaction
+document.getElementsByTagName("body").item(0).addEventListener('keydown', (e) => {
+ if (e.target != document.body) return;
+ if (e.key != "t" || e.altKey || e.shiftKey || e.ctrlKey) return;
+ e.preventDefault();
+ window.activeOperation = {
+  type: "insert-transition"
+ }
+});
+document.getElementsByTagName("body").item(0).addEventListener('click', (e) => {
+ if (!window.activeOperation || window.activeOperation.type != 'insert-transition') return;
+ let svg = document.getElementById('document');
+ if (e.target != svg) return;
+ let transition = svg.appendChild(document.getElementById('template-transition').templateNode(true , {
+  "xpath:./@x": e.clientX - 60 / 2 /* width */,
+  "xpath:./@y": e.clientY - 40 /* toolbar */ - 6 / 2 /* height */,
+ }));
+ window.activeOperation = null;
+});
+// Insert flow interaction
+document.getElementsByTagName("body").item(0).addEventListener('keydown', (e) => {
+ if (e.target != document.body) return;
+ if (e.key != "f" || e.altKey || e.shiftKey || e.ctrlKey) return;
+ e.preventDefault();
+ window.activeOperation = {
+  type: "insert-flow"
+ }
+});
+document.getElementsByTagName("body").item(0).addEventListener('click', (e) => {
+ if (!window.activeOperation || window.activeOperation.type != 'insert-flow') return;
+ let target = document.queryElement("xpath:./ancestor-or-self::*[contains(@class, 'place') or contains(@class, 'transition')]", e.target);
+ if (!target) return;
+ if (!window.activeOperation.from) {
+  window.activeOperation.from = target;
+  return;
+ }
+ if (
+  window.activeOperation.from.classList.contains('place') && !target.classList.contains('transition')
+  || window.activeOperation.from.classList.contains('transition') && !target.classList.contains('place')
+ ) return;
+ let flow = document.getElementById('document').appendChild(document.getElementById('template-flow').templateNode(true , {}));
+ flow.from = window.activeOperation.from;
+ flow.to = target;
+ window.redrawFlow(flow);
+ window.activeOperation = null;
+});
+// Toggle marking interaction
+document.getElementsByTagName("body").item(0).addEventListener('keydown', (e) => {
+ if (e.target != document.body) return;
+ if (e.key != "m" || e.altKey || e.shiftKey || e.ctrlKey) return;
+ let activeMarking = document.getElementById('markings').queryElement('css:span.marking.active');
+ if (!activeMarking) return;
+ window.activeOperation = {
+  type: "mark-place",
+  marking: activeMarking.queryElement('xpath:./text()').wholeText
+ }
+});
+document.getElementsByTagName("body").item(0).addEventListener('click', (e) => {
+ if (!window.activeOperation || window.activeOperation.type != 'mark-place') return;
+ let place = e.target.queryElement('xpath:./ancestor-or-self::*[contains(@class, "place")]');
+ if (!place) return;
+ if (!place.markings) place.markings = [];
+ if (place.markings.includes(window.activeOperation.marking)) {
+   place.markings = place.markings.filter( m => m != window.activeOperation.marking );
+ } else {
+   place.markings.push(window.activeOperation.marking);
+ }
+ redrawCurrentMarking();
+ window.activeOperation = null;
+});
+// Delete element interaction
+document.getElementsByTagName("body").item(0).addEventListener('keydown', (e) => {
+ if (e.target != document.body) return;
+ if (e.keyCode != 46 || e.altKey || e.shiftKey || e.ctrlKey) return;
+ e.preventDefault();
+ window.activeOperation = {
+  type: "delete-element"
+ }
+});
+document.getElementsByTagName("body").item(0).addEventListener('click', (e) => {
+ if (!window.activeOperation || window.activeOperation.type != 'delete-element') return;
+ let svg = document.getElementById('document');
+ let target = e.target.queryElement('xpath:./ancestor-or-self::*[contains(@class, "place") or contains(@class, "transition") or contains(@class, "flow")]');
+ if (!target) return;
+ if (target.classList.contains("flow")) {
+   target.remove();
+ } else {
+    svg
+     .queryElements("xpath:.//*[contains(@class, 'flow')]")
+     .filter( (flow) => flow.from == target || flow.to == target )
+     .forEach( (flow) => flow.remove() );
+    target.remove();
+ }
+ window.activeOperation = null;
+});
+  </script>
+  <script type="text/javascript">
+window.redrawFlow = (flow) => {
+ if (flow.from.classList.contains('place')) {
+  /* inflow */
+  let start = {
+   "x": parseInt(flow.from.queryElement("xpath:./*[local-name()='circle']/@cx").value),
+   "y": parseInt(flow.from.queryElement("xpath:./*[local-name()='circle']/@cy").value),
+  };
+  let end = {
+   "x": parseInt(flow.to.queryElement("xpath:./@x").value) + parseInt(flow.to.queryElement("xpath:./@width").value) / 2,
+   "y": parseInt(flow.to.queryElement("xpath:./@y").value),
+  };
+  let xdelta = 0;
+  if (end.y != start.y) xdelta = parseInt(flow.to.queryElement("xpath:./@width").value) / 2 * Math.max(-0.9, Math.min(0.9, (start.x - end.x) / (2*Math.abs(end.y - start.y))));
+  start.x += Math.round(20 * (end.x - start.x) / Math.sqrt((start.x - end.x)**2 + (start.y - end.y)**2));
+  start.y += Math.round(20 * (end.y - start.y) / Math.sqrt((start.x - end.x)**2 + (start.y - end.y)**2));
+  end.x += xdelta;
+  flow.queryElement("xpath:./@d").value = "M " + Math.round(start.x) + "," + Math.round(start.y) + " " + Math.round(end.x) + "," + Math.round(end.y);
+
+ } else {
+  /* outflow */
+  let start = {
+   "x": parseInt(flow.from.queryElement("xpath:./@x").value) + parseInt(flow.from.queryElement("xpath:./@width").value) / 2,
+   "y": parseInt(flow.from.queryElement("xpath:./@y").value) + parseInt(flow.from.queryElement("xpath:./@height").value)
+  };
+  let end = {
+   "x": parseInt(flow.to.queryElement("xpath:./*[local-name()='circle']/@cx").value),
+   "y": parseInt(flow.to.queryElement("xpath:./*[local-name()='circle']/@cy").value),
+  };
+  let xdelta = 0;
+  if (end.y != start.y) xdelta = parseInt(flow.from.queryElement("xpath:./@width").value) / 2 * Math.max(-0.9, Math.min(0.9, (end.x - start.x) / (2*Math.abs(end.y - start.y))));
+  start.x += xdelta;
+  end.x -= Math.round(20 * (end.x - start.x) / Math.sqrt((start.x - end.x)**2 + (start.y - end.y)**2));
+  end.y -= Math.round(20 * (end.y - start.y) / Math.sqrt((start.x - end.x)**2 + (start.y - end.y)**2));
+  flow.queryElement("xpath:./@d").value = "M " + Math.round(start.x) + "," + Math.round(start.y) + " " + Math.round(end.x) + "," + Math.round(end.y);
+
+ }
+};
+  </script>
+  <script id="script-source-template" type="text/plain+csharp"><![CDATA[
+public PetriNet petriNet;
+
+public Program()
+{
+    this.petriNet = new PetriNet(this);
+    this.petriNet.debug = true;
+// GENERATED CODE GOES HERE
+    if (Storage != ""
+        && Storage.Split(';').Count() == 2
+        && Storage.Split(';')[0].Split(',').Count() == this.petriNet.P.Count()
+        && Storage.Split(';')[1].Split(',').Count() == this.petriNet.T.Count())
+    {
+        int i = 0;
+        foreach (int tokenCount in Storage.Split(';')[0].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.P[i++].tokenCount = tokenCount;
+        i = 0;
+        foreach (int timerRemaining in Storage.Split(';')[1].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.T[i++].timerRemaining = timerRemaining;
+        Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
+    }
+}
+
+public void Save()
+{
+    Storage = String.Join(",", this.petriNet.P.ConvertAll((p) => p.tokenCount.ToString()))
+              + ";"
+              + String.Join(",", this.petriNet.T.ConvertAll((t) => t.timerRemaining.ToString()));
+}
+
+public void Main(string argument, UpdateType updateSource)
+{
+    switch (updateSource)
+    {
+        case UpdateType.Update1:
+        case UpdateType.Update10:
+        case UpdateType.Update100:
+        case UpdateType.Once:
+            this.petriNet.tick(updateSource == UpdateType.Update10 ? 10 : updateSource == UpdateType.Update100 ? 100 : 1);
+            break;
+        default:
+            this.petriNet.setMarking(argument);
+            Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
+            break;
+    }
+}
+
+public class PetriNet
+{
+    public List<Place> P = new List<Place>();
+    public List<Transition> T = new List<Transition>();
+    public Dictionary<String, int[]> markings = new Dictionary<string, int[]>();
+    public Dictionary<String, String> variables = new Dictionary<String, String>();
+    public UpdateFrequency updateFrequency = UpdateFrequency.None;
+    public bool debug = false;
+    public Dictionary<String, Object> memoizedBlock = new Dictionary<string, object>();
+    public Dictionary<String, Object> memoizedBlocks = new Dictionary<string, Object>();
+    int ticksToResetMemoizedBlocks = 1000;
+
+    public Program program;
+    public PetriNet(Program program)
+    {
+        this.program = program;
+    }
+    public void addPlace(Place[] ps) { foreach (Place p in ps) this.addPlace(p);  }
+    public void addPlace(Place p)
+    {
+        p.petriNet = this;
+        this.P.Add(p);
+    }
+    public void addTransition(Transition[] ts) { foreach (Transition t in ts) this.addTransition(t); }
+    public void addTransition(Transition t) { this.T.Add(t);  }
+    public void setMarking(String name) { this.setMarking(this.markings[name]); }
+    public void setMarking(int[] marking) { for (int i = 0; i < marking.Count(); i++) this.P[i].tokenCount = marking[i]; }
+    internal Place[] getPlace(string[] places)
+    {
+        return places.ToList<string>().ConvertAll((p) => this.getPlace(p)).ToArray();
+    }
+    private Place getPlace(string name)
+    {
+        foreach (Place p in this.P) if (p.name == name) return p;
+        throw new KeyNotFoundException();
+    }
+    internal void addMarking(string name, string[] tokenPlaces)
+    {
+        this.markings[name] = new int[this.P.Count];
+        for (int i = 0; i < this.P.Count; i++) this.markings[name][i] = tokenPlaces.Contains(this.P[i].name) ? 1 : 0;
+    }
+    public string value(String val)
+    {
+        return (val.Length > 0 && val[0] == '$') ? this.value(this.variables[val.Substring(1)]) : val;
+    }
+    public List<T> blocks<T>(String name, Action<T> apply = null) where T : IMyTerminalBlock
+    {
+        name = this.value(name);
+        if (!this.memoizedBlocks.ContainsKey(name))
+        {
+            List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
+            IMyBlockGroup group = program.GridTerminalSystem.GetBlockGroupWithName(name);
+            if (group == null) throw new Exception("Block group " + name + " not found in grid");
+            group.GetBlocks(temp);
+            List<T> result = new List<T>();
+            foreach(IMyTerminalBlock b in temp) if (b is T) result.Add((T) b);
+            this.memoizedBlocks.Add(name, result);
+        }
+        if (apply != null) foreach (T block in (List<T>) this.memoizedBlocks[name]) apply(block);
+        return (List<T>)this.memoizedBlocks[name];
+    }
+    public T block<T>(String name) where T : IMyTerminalBlock
+    {
+        name = this.value(name);
+        if (!this.memoizedBlock.ContainsKey(name))
+        {
+            IMyTerminalBlock block = this.program.GridTerminalSystem.GetBlockWithName(name);
+            if (block == null) throw new Exception("Block " + name + " not found in grid");
+            if (!(block is T)) throw new Exception("Block " + name + " is not of type " + typeof(T).Name + ", it is of type " + block.GetType().Name);
+            this.memoizedBlock.Add(name, block);
+        }
+        return (T)this.memoizedBlock[name];
+    }
+    public void tick(int tickCount)
+    {
+        this.ticksToResetMemoizedBlocks -= tickCount;
+        if (this.ticksToResetMemoizedBlocks <= 0)
+        {
+            this.memoizedBlock.Clear();
+            this.memoizedBlocks.Clear();
+            this.ticksToResetMemoizedBlocks = 1000;
+        }
+        foreach (Place p in this.P) p.tick(tickCount);
+        foreach (Transition t in this.T) if (t.tick(tickCount)) this.updateFrequency = UpdateFrequency.None;
+        this.program.Runtime.UpdateFrequency = this.requiredUpdateFrequency();
+        if (this.debug)
+        {
+            this.program.Echo("--- tick ----");
+            foreach (Place p in this.P) if (p.tokenCount > 0) this.program.Echo(" - " + p.name + ":" + p.tokenCount.ToString());
+        }
+    }
+    public UpdateFrequency requiredUpdateFrequency()
+    {
+        if (this.updateFrequency != UpdateFrequency.None) return this.updateFrequency;
+        this.updateFrequency = UpdateFrequency.Update100;
+        foreach (Transition t in this.T) switch(t.requiredUpdateFrequency())
+            {
+                case UpdateFrequency.Update1:
+                    return this.updateFrequency = UpdateFrequency.Update1;
+                case UpdateFrequency.Update10:
+                    this.updateFrequency = UpdateFrequency.Update10;
+                    break;
+            }
+        return this.updateFrequency;
+    }
+}
+
+public class Place
+{
+    public string name;
+    public Action<PetriNet> onEntry;
+    public Action<PetriNet> onTick;
+    public Action<PetriNet> onExit;
+    public int tokenCount = 0;
+    public PetriNet petriNet;
+
+    public Place(String name, Action<PetriNet> entryFunc, Action<PetriNet> tickFunc, Action<PetriNet> exitFunc)
+    {
+        this.name = name;
+        this.onEntry = entryFunc;
+        this.onTick = tickFunc;
+        this.onExit = exitFunc;
+    }
+    public void tick(int tickCount) { if (this.onTick != null && this.tokenCount > 0) this.onTick(this.petriNet);  }
+    public void enter()
+    {
+        this.tokenCount++;
+        if (this.onEntry != null) this.onEntry(this.petriNet);
+    }
+    public void exit()
+    {
+        if (this.tokenCount == 0) return;
+        this.tokenCount--;
+        if (this.onExit != null) this.onExit(this.petriNet);
+    }
+
+}
+
+public class Transition
+{
+    public Place[] inFlows;
+    public Place[] outFlows;
+    public Func<PetriNet, bool> enabledTest;
+    public int timer;
+    public int timerRemaining;
+    public UpdateFrequency updateFrequency;
+
+    public Transition(Place[] inFlows, Place[] outFlows, Func<PetriNet, bool> enabledTest, int timer = 1, UpdateFrequency updateFrequency = UpdateFrequency.Update100)
+    {
+        if (inFlows.Count() == 0 && outFlows.Count() == 0) throw new Exception("A transition must have at least one inFlow or one outFlow");
+        this.inFlows = inFlows;
+        this.outFlows = outFlows;
+        this.enabledTest = enabledTest;
+        this.timer = this.timerRemaining = timer;
+        this.updateFrequency = updateFrequency;
+    }
+    public PetriNet petriNet()
+    {
+        return (this.inFlows.Count() > 0 ? this.inFlows : this.outFlows)[0].petriNet;
+    }
+    public bool enabled()
+    {
+        foreach (Place p in this.inFlows) if (p.tokenCount == 0) return false;
+        if (this.enabledTest == null) return true;
+        return this.enabledTest(this.petriNet());
+    }
+    public UpdateFrequency requiredUpdateFrequency()
+    {
+        foreach (Place p in this.inFlows) if (p.tokenCount == 0) return UpdateFrequency.Update100;
+        return this.updateFrequency;
+    }
+    public bool tick(int tickCount)
+    {
+        if (!this.enabled()) return false;
+        this.timerRemaining -= tickCount;
+        if (this.timerRemaining > 0) return false;
+        this.timerRemaining = this.timer;
+        foreach (Place p in this.inFlows) p.exit();
+        foreach (Place p in this.outFlows) p.enter();
+        return true;
+    }
+}
+]]></script>
+ </body>
+</html>

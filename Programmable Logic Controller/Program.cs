@@ -29,7 +29,7 @@ namespace IngameScript
             this.petriNet = new PetriNet(this);
             this.petriNet.debug = true;
             this.petriNet.variables["piston"] = "TestPiston";
-            this.petriNet.addPlace( new Place[] {
+            this.petriNet.addPlace(new Place[] {
                 new Place("init", null, null, null),
                 new Place("extending", (PetriNet p) => p.blocks<IMyExtendedPistonBase>("$piston", (piston) => piston.Velocity = (float) 1), null, null),
                 new Place("retracting", (PetriNet p) => p.blocks<IMyExtendedPistonBase>("$piston", (piston) => piston.Velocity = (float) -1), null, null),
@@ -41,17 +41,41 @@ namespace IngameScript
                 new Transition(this.petriNet.getPlace( new string[] { "retracting" }), this.petriNet.getPlace( new string[] { "extending" }), (PetriNet p) => p.blocks<IMyExtendedPistonBase>("$piston")[0].CurrentPosition < (float) 0.1)
             });
             this.petriNet.addMarking("main", new string[] { "init" });
-            if (Storage != "" 
+            readStorage();
+        }
+
+        private void readConfig()
+        {
+            if (Me.CustomData.Length > 0)
+            {
+                string[] lines = Me.CustomData.Split(new char[] { '\r', '\n' });
+                foreach(string line in lines)
+                {
+                    string[] assignment = line.Split(new char[] { '=' }, 2);
+                    if (assignment.Length == 2) petriNet.variables[assignment[0].Trim()] = assignment[1].Trim();
+                }
+            }
+        }
+
+        private void readStorage()
+        {
+            if (Storage != ""
                 && Storage.Split(';').Count() == 2
                 && Storage.Split(';')[0].Split(',').Count() == this.petriNet.P.Count()
                 && Storage.Split(';')[1].Split(',').Count() == this.petriNet.T.Count())
-            {
-                int i = 0;
-                foreach (int tokenCount in Storage.Split(';')[0].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.P[i++].tokenCount = tokenCount;
-                i = 0;
-                foreach (int timerRemaining in Storage.Split(';')[1].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.T[i++].timerRemaining = timerRemaining;
-                Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
-            }
+                try
+                {
+                    int i = 0;
+                    foreach (int timerRemaining in Storage.Split(';')[1].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.T[i++].timerRemaining = timerRemaining;
+                    i = 0;
+                    foreach (int tokenCount in Storage.Split(';')[0].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.P[i++].tokenCount = tokenCount;
+                    Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
+                }
+                catch (Exception e)
+                {
+                    Echo("Exception reading storage string: " + e.Message);
+                    Storage = "";
+                }
         }
 
         public void Save()
@@ -72,6 +96,7 @@ namespace IngameScript
                     this.petriNet.tick(updateSource == UpdateType.Update10 ? 10 : updateSource == UpdateType.Update100 ? 100 : 1);
                     break;
                 default:
+                    readConfig();
                     this.petriNet.setMarking(argument);
                     Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
                     break;

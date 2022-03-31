@@ -48,7 +48,10 @@ namespace IngameScript
             public void addTransition(Transition[] ts) { foreach (Transition t in ts) this.addTransition(t); }
             public void addTransition(Transition t) { this.T.Add(t);  }
             public void setMarking(String name) { this.setMarking(this.markings[name]); }
-            public void setMarking(int[] marking) { for (int i = 0; i < marking.Count(); i++) this.P[i].tokenCount = marking[i]; }
+            public void setMarking(int[] marking) { 
+                for (int i = 0; i < marking.Count(); i++) this.P[i].tokenCount = marking[i];
+                foreach (Transition t in T) t.resetTimer();
+            }
             internal Place[] getPlace(string[] places)
             {
                 return places.ToList<string>().ConvertAll((p) => this.getPlace(p)).ToArray();

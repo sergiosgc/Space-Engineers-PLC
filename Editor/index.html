@@ -916,24 +916,48 @@ public Program()
     this.petriNet = new PetriNet(this);
     this.petriNet.debug = true;
 // GENERATED CODE GOES HERE
+    readStorage();
+}
+
+private void readConfig()
+{
+    if (Me.CustomData.Length > 0)
+    {
+        string[] lines = Me.CustomData.Split(new char[] { '\r', '\n' });
+        foreach(string line in lines)
+        {
+            string[] assignment = line.Split(new char[] { '=' }, 2);
+            if (assignment.Length == 2) petriNet.variables[assignment[0].Trim()] = assignment[1].Trim();
+        }
+    }
+}
+
+private void readStorage()
+{
     if (Storage != ""
         && Storage.Split(';').Count() == 2
         && Storage.Split(';')[0].Split(',').Count() == this.petriNet.P.Count()
         && Storage.Split(';')[1].Split(',').Count() == this.petriNet.T.Count())
-    {
-        int i = 0;
-        foreach (int tokenCount in Storage.Split(';')[0].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.P[i++].tokenCount = tokenCount;
-        i = 0;
-        foreach (int timerRemaining in Storage.Split(';')[1].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.T[i++].timerRemaining = timerRemaining;
-        Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
-    }
+        try
+        {
+            int i = 0;
+            foreach (int timerRemaining in Storage.Split(';')[1].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.T[i++].timerRemaining = timerRemaining;
+            i = 0;
+            foreach (int tokenCount in Storage.Split(';')[0].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.P[i++].tokenCount = tokenCount;
+            Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
+        }
+        catch (Exception e)
+        {
+            Echo("Exception reading storage string: " + e.Message);
+            Storage = "";
+        }
 }
 
 public void Save()
 {
     Storage = String.Join(",", this.petriNet.P.ConvertAll((p) => p.tokenCount.ToString()))
-              + ";"
-              + String.Join(",", this.petriNet.T.ConvertAll((t) => t.timerRemaining.ToString()));
+            + ";"
+            + String.Join(",", this.petriNet.T.ConvertAll((t) => t.timerRemaining.ToString()));
 }
 
 public void Main(string argument, UpdateType updateSource)
@@ -947,6 +971,7 @@ public void Main(string argument, UpdateType updateSource)
             this.petriNet.tick(updateSource == UpdateType.Update10 ? 10 : updateSource == UpdateType.Update100 ? 100 : 1);
             break;
         default:
+            readConfig();
             this.petriNet.setMarking(argument);
             Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
             break;
@@ -979,7 +1004,10 @@ public class PetriNet
     public void addTransition(Transition[] ts) { foreach (Transition t in ts) this.addTransition(t); }
     public void addTransition(Transition t) { this.T.Add(t);  }
     public void setMarking(String name) { this.setMarking(this.markings[name]); }
-    public void setMarking(int[] marking) { for (int i = 0; i < marking.Count(); i++) this.P[i].tokenCount = marking[i]; }
+    public void setMarking(int[] marking) {
+        for (int i = 0; i < marking.Count(); i++) this.P[i].tokenCount = marking[i];
+        foreach (Transition t in T) t.resetTimer();
+    }
     internal Place[] getPlace(string[] places)
     {
         return places.ToList<string>().ConvertAll((p) => this.getPlace(p)).ToArray();
@@ -1129,10 +1157,15 @@ public class Transition
         if (!this.enabled()) return false;
         this.timerRemaining -= tickCount;
         if (this.timerRemaining > 0) return false;
-        this.timerRemaining = this.timer;
+        resetTimer();
         foreach (Place p in this.inFlows) p.exit();
         foreach (Place p in this.outFlows) p.enter();
         return true;
+    }
+
+    public void resetTimer()
+    {
+        this.timerRemaining = this.timer;
     }
 }
 ]]></script>

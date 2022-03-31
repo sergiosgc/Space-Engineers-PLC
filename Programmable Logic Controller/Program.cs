@@ -28,19 +28,7 @@ namespace IngameScript
         {
             this.petriNet = new PetriNet(this);
             this.petriNet.debug = true;
-            this.petriNet.variables["piston"] = "TestPiston";
-            this.petriNet.addPlace(new Place[] {
-                new Place("init", null, null, null),
-                new Place("extending", (PetriNet p) => p.blocks<IMyExtendedPistonBase>("$piston", (piston) => piston.Velocity = (float) 1), null, null),
-                new Place("retracting", (PetriNet p) => p.blocks<IMyExtendedPistonBase>("$piston", (piston) => piston.Velocity = (float) -1), null, null),
-            });
-            this.petriNet.addTransition(new Transition[]
-            {
-                new Transition(this.petriNet.getPlace( new string[] { "init" }), this.petriNet.getPlace( new string[] { "extending" }), null),
-                new Transition(this.petriNet.getPlace( new string[] { "extending" }), this.petriNet.getPlace( new string[] { "retracting" }), (PetriNet p) => p.blocks<IMyExtendedPistonBase>("$piston")[0].CurrentPosition > (float) 9.9),
-                new Transition(this.petriNet.getPlace( new string[] { "retracting" }), this.petriNet.getPlace( new string[] { "extending" }), (PetriNet p) => p.blocks<IMyExtendedPistonBase>("$piston")[0].CurrentPosition < (float) 0.1)
-            });
-            this.petriNet.addMarking("main", new string[] { "init" });
+// GENERATED CODE GOES HERE
             readStorage();
         }
 

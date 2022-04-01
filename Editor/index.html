@@ -375,15 +375,15 @@ document.getElementById('toolbar-compile').addEventListener('click', function(ev
           .filter( (flow) => flow.to == transition )
           .map( (flow) => '"' + (flow.from.petriName ? flow.from.petriName : "") + '"')
           .join(", ") 
-        + " }",
-        " new string[] { "
+        + " })",
+        "this.petriNet.getPlace( new string[] { "
         + document
            .getElementById('document')
            .queryElements('xpath:.//*[contains(@class, "flow")]') 
            .filter( (flow) => flow.from == transition )
            .map( (flow) => '"' + (flow.to.petriName ? flow.to.petriName : "") + '"')
            .join(", ")
-        + " }",
+        + " })",
         transition.petriEnabledTest && transition.petriEnabledTest.trim() != "" ? transition.petriEnabledTest.trim() : "null",
         transition.petriTimer ? transition.petriTimer : "1",
         transition.petriUpdateFrequency ? ("UpdateFrequency.Update" + transition.petriUpdateFrequency) : "UpdateFrequency.Update100"

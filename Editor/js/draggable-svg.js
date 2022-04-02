@@ -12,7 +12,7 @@ class DraggableSVG {
         new MutationEventAttacher(rootNode, "xpath:.", "mouseleave", this.mouseleave.bind(this));
     }
     getMousePosition(evt) {
-        var CTM = evt.target.queryElement("xpath:./ancestor-or-self::*[local-name() = 'svg']").getScreenCTM();
+        let CTM = evt.target.queryElement("xpath:./ancestor-or-self::*[local-name() = 'svg']").getScreenCTM();
         let result = {
             x: (evt.clientX - CTM.e) / CTM.a,
             y: (evt.clientY - CTM.f) / CTM.d

@@ -761,15 +761,16 @@ document.getElementsByTagName("body").item(0).addEventListener('keydown', (e) =>
 });
 document.getElementsByTagName("body").item(0).addEventListener('click', (e) => {
  if (!window.activeOperation || window.activeOperation.type != 'insert-place') return;
- let svg = document.getElementById('document');
+    let svg = document.getElementById('document');
+    let CTM = svg.getScreenCTM();
  if (e.target != svg) return;
  let place = svg.appendChild(document.getElementById('template-place').templateNode(true , {
-  "xpath:./*[local-name()='circle']/@cx": e.clientX,
-  "xpath:./*[local-name()='circle']/@cy": e.clientY - 40 /* toolbar */,
-  "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cx": e.clientX,
-  "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cy": e.clientY - 40 /* toolbar */ + 10,
-  "xpath:./*[local-name()='text']/@x": e.clientX + 20 /* radius */ + 10 /* margin */,
-  "xpath:./*[local-name()='text']/@y": e.clientY - 40 /* toolbar */ + 20 /* radius */ - 3 /* underhang */,
+     "xpath:./*[local-name()='circle']/@cx": (e.clientX - CTM.e) / CTM.a,
+     "xpath:./*[local-name()='circle']/@cy": (e.clientY - CTM.f) / CTM.d,
+     "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cx": (e.clientX - CTM.e) / CTM.a,
+     "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cy": (e.clientY - CTM.f) / CTM.d + 10,
+     "xpath:./*[local-name()='text']/@x": (e.clientX - CTM.e) / CTM.a + 20 /* radius */ + 10 /* margin */,
+     "xpath:./*[local-name()='text']/@y": (e.clientY - CTM.f) / CTM.d + 20 /* radius */ - 3 /* underhang */,
  }));
  window.activeOperation = null;
 });
@@ -785,10 +786,11 @@ document.getElementsByTagName("body").item(0).addEventListener('keydown', (e) =>
 document.getElementsByTagName("body").item(0).addEventListener('click', (e) => {
  if (!window.activeOperation || window.activeOperation.type != 'insert-transition') return;
  let svg = document.getElementById('document');
+ let CTM = svg.getScreenCTM();
  if (e.target != svg) return;
  let transition = svg.appendChild(document.getElementById('template-transition').templateNode(true , {
-  "xpath:./@x": e.clientX - 60 / 2 /* width */,
-  "xpath:./@y": e.clientY - 40 /* toolbar */ - 6 / 2 /* height */,
+     "xpath:./@x": (e.clientX - CTM.e) / CTM.a - 60 / 2 /* width */,
+     "xpath:./@y": (e.clientY - CTM.f) / CTM.d - 6 / 2 /* height */,
  }));
  window.activeOperation = null;
 });

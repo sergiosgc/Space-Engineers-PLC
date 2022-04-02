@@ -309,6 +309,31 @@ body {
   <script type="text/javascript" src="js/templateNode.js"></script>
   <script type="text/javascript" src="js/draggable-svg.js"></script>
   <script type="text/javascript">
+// Scroll and Zoom
+(function (handler) {
+    window.addEventListener("wheel", handler, { passive: false });
+    window.addEventListener("keydown", handler), { passive: false };
+})(function (e) {
+    let zoomFactor = 0;
+    if ((e.key && e.key == '+' && e.ctrlKey)) zoomFactor = 0.1;
+    if ((e.key && e.key == '-' && e.ctrlKey)) zoomFactor = -0.1;
+    if (e.wheelDeltaY && e.wheelDeltaY != 0 && e.ctrlKey) zoomFactor = e.wheelDeltaY / 3240;
+    if (zoomFactor == 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    zoomFactor = zoomFactor > 0 ? (1 - zoomFactor) : (1 / (1 + zoomFactor));
+    let svg = document.getElementById('document');
+    let viewBox = svg.getAttribute('viewBox').split(' ').map((val) => parseInt(val));
+    let newViewBox = [
+        viewBox[0],
+        viewBox[1],
+        Math.round(viewBox[2] * zoomFactor),
+        Math.round(viewBox[3] * zoomFactor)
+    ];
+    newViewBox[0] += Math.round((viewBox[2] - newViewBox[2]) / 2);
+    newViewBox[1] += Math.round((viewBox[3] - newViewBox[3]) / 2);
+    svg.setAttribute("viewBox", newViewBox.join(" "));
+});
 document.getElementById('document').addEventListener('mousedown', (evt) => {
  if (evt.target != document.getElementById('document')) return;
  if (window.activeOperation) return;

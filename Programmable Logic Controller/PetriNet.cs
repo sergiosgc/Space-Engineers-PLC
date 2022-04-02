@@ -58,13 +58,15 @@ namespace IngameScript
                 block.RotorLock = false;
                 float toRad = toDeg / 180 * ((float)Math.PI);
                 speedRPM = Math.Abs(speedRPM);
-                if (block.UpperLimitRad < block.Angle) block.UpperLimitRad = block.Angle;
-                if (block.LowerLimitRad > block.Angle) block.LowerLimitRad = block.Angle;
-                if (block.Angle < toRad)
+                float currentAngle = block.Angle;
+                if (currentAngle > Math.PI) currentAngle -= 2 * ((float)Math.PI);
+                if (block.UpperLimitRad < currentAngle) block.UpperLimitRad = currentAngle;
+                if (block.LowerLimitRad > currentAngle) block.LowerLimitRad = currentAngle;
+                if (currentAngle < toRad)
                 {
                     block.UpperLimitRad = toRad;
                     block.TargetVelocityRPM = speedRPM;
-                } else if (block.Angle > toRad)
+                } else if (currentAngle > toRad)
                 {
                     block.LowerLimitRad = toRad;
                     block.TargetVelocityRPM = -speedRPM;
@@ -91,7 +93,9 @@ namespace IngameScript
             }
             public bool blockPositionIs(IMyMotorStator block, float posDeg, float precision = (float)0.1)
             {
-                return Math.Abs(block.Angle * 180 / ((float) Math.PI) - posDeg) < Math.Abs(precision);
+                float currentAngle = block.Angle;
+                if (currentAngle > Math.PI) currentAngle -= 2 * ((float)Math.PI);
+                return Math.Abs(currentAngle * 180 / ((float) Math.PI) - posDeg) < Math.Abs(precision);
             }
             public bool blockPositionIs(IMyPistonBase block, float pos, float precision = (float) 0.1)
             {

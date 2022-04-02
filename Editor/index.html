@@ -937,265 +937,310 @@ window.redrawFlow = (flow) => {
 };
   </script>
   <script id="script-source-template" type="text/plain+csharp"><![CDATA[
-public PetriNet petriNet;
+      public PetriNet petriNet;
 
-public Program()
-{
-    this.petriNet = new PetriNet(this);
-    this.petriNet.debug = true;
+      public Program()
+      {
+          this.petriNet = new PetriNet(this);
+          this.petriNet.debug = true;
 // GENERATED CODE GOES HERE
-    readStorage();
-}
+          readStorage();
+      }
 
-private void readConfig()
-{
-    if (Me.CustomData.Length > 0)
-    {
-        string[] lines = Me.CustomData.Split(new char[] { '\r', '\n' });
-        foreach(string line in lines)
-        {
-            string[] assignment = line.Split(new char[] { '=' }, 2);
-            if (assignment.Length == 2) petriNet.variables[assignment[0].Trim()] = assignment[1].Trim();
-        }
-    }
-}
+      private void readConfig()
+      {
+          if (Me.CustomData.Length > 0)
+          {
+              string[] lines = Me.CustomData.Split(new char[] { '\r', '\n' });
+              foreach(string line in lines)
+              {
+                  string[] assignment = line.Split(new char[] { '=' }, 2);
+                  if (assignment.Length == 2) petriNet.variables[assignment[0].Trim()] = assignment[1].Trim();
+              }
+          }
+      }
 
-private void readStorage()
-{
-    if (Storage != ""
-        && Storage.Split(';').Count() == 2
-        && Storage.Split(';')[0].Split(',').Count() == this.petriNet.P.Count()
-        && Storage.Split(';')[1].Split(',').Count() == this.petriNet.T.Count())
-        try
-        {
-            int i = 0;
-            foreach (int timerRemaining in Storage.Split(';')[1].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.T[i++].timerRemaining = timerRemaining;
-            i = 0;
-            foreach (int tokenCount in Storage.Split(';')[0].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.P[i++].tokenCount = tokenCount;
-            Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
-        }
-        catch (Exception e)
-        {
-            Echo("Exception reading storage string: " + e.Message);
-            Storage = "";
-        }
-}
+      private void readStorage()
+      {
+          if (Storage != ""
+              && Storage.Split(';').Count() == 2
+              && Storage.Split(';')[0].Split(',').Count() == this.petriNet.P.Count()
+              && Storage.Split(';')[1].Split(',').Count() == this.petriNet.T.Count())
+              try
+              {
+                  int i = 0;
+                  foreach (int timerRemaining in Storage.Split(';')[1].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.T[i++].timerRemaining = timerRemaining;
+                  i = 0;
+                  foreach (int tokenCount in Storage.Split(';')[0].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.P[i++].tokenCount = tokenCount;
+                  Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
+              }
+              catch (Exception e)
+              {
+                  Echo("Exception reading storage string: " + e.Message);
+                  Storage = "";
+              }
+      }
 
-public void Save()
-{
-    Storage = String.Join(",", this.petriNet.P.ConvertAll((p) => p.tokenCount.ToString()))
-            + ";"
-            + String.Join(",", this.petriNet.T.ConvertAll((t) => t.timerRemaining.ToString()));
-}
+      public void Save()
+      {
+          Storage = String.Join(",", this.petriNet.P.ConvertAll((p) => p.tokenCount.ToString()))
+                  + ";"
+                  + String.Join(",", this.petriNet.T.ConvertAll((t) => t.timerRemaining.ToString()));
+      }
 
-public void Main(string argument, UpdateType updateSource)
-{
-    switch (updateSource)
-    {
-        case UpdateType.Update1:
-        case UpdateType.Update10:
-        case UpdateType.Update100:
-        case UpdateType.Once:
-            this.petriNet.tick(updateSource == UpdateType.Update10 ? 10 : updateSource == UpdateType.Update100 ? 100 : 1);
-            break;
-        default:
-            readConfig();
-            this.petriNet.setMarking(argument);
-            Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
-            break;
-    }
-}
+      public void Main(string argument, UpdateType updateSource)
+      {
+          switch (updateSource)
+          {
+              case UpdateType.Update1:
+              case UpdateType.Update10:
+              case UpdateType.Update100:
+              case UpdateType.Once:
+                  this.petriNet.tick(updateSource == UpdateType.Update10 ? 10 : updateSource == UpdateType.Update100 ? 100 : 1);
+                  break;
+              default:
+                  readConfig();
+                  this.petriNet.setMarking(argument);
+                  Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
+                  break;
+          }
+      }
 
-public class PetriNet
-{
-    public List<Place> P = new List<Place>();
-    public List<Transition> T = new List<Transition>();
-    public Dictionary<String, int[]> markings = new Dictionary<string, int[]>();
-    public Dictionary<String, String> variables = new Dictionary<String, String>();
-    public UpdateFrequency updateFrequency = UpdateFrequency.None;
-    public bool debug = false;
-    public Dictionary<String, Object> memoizedBlock = new Dictionary<string, object>();
-    public Dictionary<String, Object> memoizedBlocks = new Dictionary<string, Object>();
-    int ticksToResetMemoizedBlocks = 1000;
+      public class PetriNet
+      {
+          public List<Place> P = new List<Place>();
+          public List<Transition> T = new List<Transition>();
+          public Dictionary<String, int[]> markings = new Dictionary<string, int[]>();
+          public Dictionary<String, String> variables = new Dictionary<String, String>();
+          public UpdateFrequency updateFrequency = UpdateFrequency.None;
+          public bool debug = false;
+          public Dictionary<String, Object> memoizedBlock = new Dictionary<string, object>();
+          public Dictionary<String, Object> memoizedBlocks = new Dictionary<string, Object>();
+          int ticksToResetMemoizedBlocks = 1000;
 
-    public Program program;
-    public PetriNet(Program program)
-    {
-        this.program = program;
-    }
-    public void addPlace(Place[] ps) { foreach (Place p in ps) this.addPlace(p);  }
-    public void addPlace(Place p)
-    {
-        p.petriNet = this;
-        this.P.Add(p);
-    }
-    public void addTransition(Transition[] ts) { foreach (Transition t in ts) this.addTransition(t); }
-    public void addTransition(Transition t) { this.T.Add(t);  }
-    public void setMarking(String name) { this.setMarking(this.markings[name]); }
-    public void setMarking(int[] marking) {
-        for (int i = 0; i < marking.Count(); i++) this.P[i].tokenCount = marking[i];
-        foreach (Transition t in T) t.resetTimer();
-    }
-    internal Place[] getPlace(string[] places)
-    {
-        return places.ToList<string>().ConvertAll((p) => this.getPlace(p)).ToArray();
-    }
-    private Place getPlace(string name)
-    {
-        foreach (Place p in this.P) if (p.name == name) return p;
-        throw new KeyNotFoundException();
-    }
-    internal void addMarking(string name, string[] tokenPlaces)
-    {
-        this.markings[name] = new int[this.P.Count];
-        for (int i = 0; i < this.P.Count; i++) this.markings[name][i] = tokenPlaces.Contains(this.P[i].name) ? 1 : 0;
-    }
-    public string value(String val)
-    {
-        return (val.Length > 0 && val[0] == '$') ? this.value(this.variables[val.Substring(1)]) : val;
-    }
-    public List<T> blocks<T>(String name, Action<T> apply = null) where T : IMyTerminalBlock
-    {
-        name = this.value(name);
-        if (!this.memoizedBlocks.ContainsKey(name))
-        {
-            List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
-            IMyBlockGroup group = program.GridTerminalSystem.GetBlockGroupWithName(name);
-            if (group == null) throw new Exception("Block group " + name + " not found in grid");
-            group.GetBlocks(temp);
-            List<T> result = new List<T>();
-            foreach(IMyTerminalBlock b in temp) if (b is T) result.Add((T) b);
-            this.memoizedBlocks.Add(name, result);
-        }
-        if (apply != null) foreach (T block in (List<T>) this.memoizedBlocks[name]) apply(block);
-        return (List<T>)this.memoizedBlocks[name];
-    }
-    public T block<T>(String name) where T : IMyTerminalBlock
-    {
-        name = this.value(name);
-        if (!this.memoizedBlock.ContainsKey(name))
-        {
-            IMyTerminalBlock block = this.program.GridTerminalSystem.GetBlockWithName(name);
-            if (block == null) throw new Exception("Block " + name + " not found in grid");
-            if (!(block is T)) throw new Exception("Block " + name + " is not of type " + typeof(T).Name + ", it is of type " + block.GetType().Name);
-            this.memoizedBlock.Add(name, block);
-        }
-        return (T)this.memoizedBlock[name];
-    }
-    public void tick(int tickCount)
-    {
-        this.ticksToResetMemoizedBlocks -= tickCount;
-        if (this.ticksToResetMemoizedBlocks <= 0)
-        {
-            this.memoizedBlock.Clear();
-            this.memoizedBlocks.Clear();
-            this.ticksToResetMemoizedBlocks = 1000;
-        }
-        foreach (Place p in this.P) p.tick(tickCount);
-        foreach (Transition t in this.T) if (t.tick(tickCount)) this.updateFrequency = UpdateFrequency.None;
-        this.program.Runtime.UpdateFrequency = this.requiredUpdateFrequency();
-        if (this.debug)
-        {
-            this.program.Echo("--- tick ----");
-            foreach (Place p in this.P) if (p.tokenCount > 0) this.program.Echo(" - " + p.name + ":" + p.tokenCount.ToString());
-        }
-    }
-    public UpdateFrequency requiredUpdateFrequency()
-    {
-        if (this.updateFrequency != UpdateFrequency.None) return this.updateFrequency;
-        this.updateFrequency = UpdateFrequency.Update100;
-        foreach (Transition t in this.T) switch(t.requiredUpdateFrequency())
-            {
-                case UpdateFrequency.Update1:
-                    return this.updateFrequency = UpdateFrequency.Update1;
-                case UpdateFrequency.Update10:
-                    this.updateFrequency = UpdateFrequency.Update10;
-                    break;
-            }
-        return this.updateFrequency;
-    }
-}
+          public Program program;
+          public PetriNet(Program program)
+          {
+              this.program = program;
+          }
+          public void addPlace(Place[] ps) { foreach (Place p in ps) this.addPlace(p);  }
+          public void addPlace(Place p)
+          {
+              p.petriNet = this;
+              this.P.Add(p);
+          }
+          public void addTransition(Transition[] ts) { foreach (Transition t in ts) this.addTransition(t); }
+          public void addTransition(Transition t) { this.T.Add(t);  }
+          public void setMarking(String name) { this.setMarking(this.markings[name]); }
+          public void setMarking(int[] marking) {
+              for (int i = 0; i < marking.Count(); i++) this.P[i].tokenCount = marking[i];
+              foreach (Transition t in T) t.resetTimer();
+          }
+          public void blockMoveTo(IMyMotorStator block, float toDeg, float speedRPM)
+          {
+              block.Enabled = true;
+              block.RotorLock = false;
+              float toRad = toDeg / 180 * ((float)Math.PI);
+              speedRPM = Math.Abs(speedRPM);
+              if (block.UpperLimitRad < block.Angle) block.UpperLimitRad = block.Angle;
+              if (block.LowerLimitRad > block.Angle) block.LowerLimitRad = block.Angle;
+              if (block.Angle < toRad)
+              {
+                  block.UpperLimitRad = toRad;
+                  block.TargetVelocityRPM = speedRPM;
+              } else if (block.Angle > toRad)
+              {
+                  block.LowerLimitRad = toRad;
+                  block.TargetVelocityRPM = -speedRPM;
+              } else
+              {
+                  block.UpperLimitRad = toRad;
+                  block.LowerLimitRad = toRad;
+                  block.TargetVelocityRPM = 0;
+              }
+          }
+          public void blockMoveTo(IMyPistonBase block, float to, float velocity)
+          {
+              velocity = Math.Abs(velocity);
+              block.Enabled = true;
+              if (block.CurrentPosition < to)
+              {
+                  block.Velocity = velocity;
+              }
+              else if (block.CurrentPosition > to)
+              {
+                  block.Velocity = -velocity;
+              }
+              else block.Velocity = 0;
+          }
+          public bool blockPositionIs(IMyMotorStator block, float posDeg, float precision = (float)0.1)
+          {
+              return Math.Abs(block.Angle * 180 / ((float) Math.PI) - posDeg) < Math.Abs(precision);
+          }
+          public bool blockPositionIs(IMyPistonBase block, float pos, float precision = (float) 0.1)
+          {
+              return Math.Abs(block.CurrentPosition - pos) < Math.Abs(precision);
+          }
+          internal Place[] getPlace(string[] places)
+          {
+              return places.ToList<string>().ConvertAll((p) => this.getPlace(p)).ToArray();
+          }
+          private Place getPlace(string name)
+          {
+              foreach (Place p in this.P) if (p.name == name) return p;
+              throw new KeyNotFoundException();
+          }
+          internal void addMarking(string name, string[] tokenPlaces)
+          {
+              this.markings[name] = new int[this.P.Count];
+              for (int i = 0; i < this.P.Count; i++) this.markings[name][i] = tokenPlaces.Contains(this.P[i].name) ? 1 : 0;
+          }
+          public string value(String val)
+          {
+              return (val.Length > 0 && val[0] == '$') ? this.value(this.variables[val.Substring(1)]) : val;
+          }
+          public List<T> blocks<T>(String name, Action<T> apply = null) where T : IMyTerminalBlock
+          {
+              name = this.value(name);
+              if (!this.memoizedBlocks.ContainsKey(name))
+              {
+                  List<IMyTerminalBlock> temp = new List<IMyTerminalBlock>();
+                  IMyBlockGroup group = program.GridTerminalSystem.GetBlockGroupWithName(name);
+                  if (group == null) throw new Exception("Block group " + name + " not found in grid");
+                  group.GetBlocks(temp);
+                  List<T> result = new List<T>();
+                  foreach(IMyTerminalBlock b in temp) if (b is T) result.Add((T) b);
+                  this.memoizedBlocks.Add(name, result);
+              }
+              if (apply != null) foreach (T block in (List<T>) this.memoizedBlocks[name]) apply(block);
+              return (List<T>)this.memoizedBlocks[name];
+          }
+          public T block<T>(String name) where T : IMyTerminalBlock
+          {
+              name = this.value(name);
+              if (!this.memoizedBlock.ContainsKey(name))
+              {
+                  IMyTerminalBlock block = this.program.GridTerminalSystem.GetBlockWithName(name);
+                  if (block == null) throw new Exception("Block " + name + " not found in grid");
+                  if (!(block is T)) throw new Exception("Block " + name + " is not of type " + typeof(T).Name + ", it is of type " + block.GetType().Name);
+                  this.memoizedBlock.Add(name, block);
+              }
+              return (T)this.memoizedBlock[name];
+          }
+          public void tick(int tickCount)
+          {
+              this.ticksToResetMemoizedBlocks -= tickCount;
+              if (this.ticksToResetMemoizedBlocks <= 0)
+              {
+                  this.memoizedBlock.Clear();
+                  this.memoizedBlocks.Clear();
+                  this.ticksToResetMemoizedBlocks = 1000;
+              }
+              foreach (Place p in this.P) p.tick(tickCount);
+              foreach (Transition t in this.T) if (t.tick(tickCount)) this.updateFrequency = UpdateFrequency.None;
+              this.program.Runtime.UpdateFrequency = this.requiredUpdateFrequency();
+              if (this.debug)
+              {
+                  this.program.Echo("--- tick ----");
+                  foreach (Place p in this.P) if (p.tokenCount > 0) this.program.Echo(" - " + p.name + ":" + p.tokenCount.ToString());
+              }
+          }
+          public UpdateFrequency requiredUpdateFrequency()
+          {
+              if (this.updateFrequency != UpdateFrequency.None) return this.updateFrequency;
+              this.updateFrequency = UpdateFrequency.Update100;
+              foreach (Transition t in this.T) switch(t.requiredUpdateFrequency())
+                  {
+                      case UpdateFrequency.Update1:
+                          return this.updateFrequency = UpdateFrequency.Update1;
+                      case UpdateFrequency.Update10:
+                          this.updateFrequency = UpdateFrequency.Update10;
+                          break;
+                  }
+              return this.updateFrequency;
+          }
+      }
 
-public class Place
-{
-    public string name;
-    public Action<PetriNet> onEntry;
-    public Action<PetriNet> onTick;
-    public Action<PetriNet> onExit;
-    public int tokenCount = 0;
-    public PetriNet petriNet;
+      public class Place
+      {
+          public string name;
+          public Action<PetriNet> onEntry;
+          public Action<PetriNet> onTick;
+          public Action<PetriNet> onExit;
+          public int tokenCount = 0;
+          public PetriNet petriNet;
 
-    public Place(String name, Action<PetriNet> entryFunc, Action<PetriNet> tickFunc, Action<PetriNet> exitFunc)
-    {
-        this.name = name;
-        this.onEntry = entryFunc;
-        this.onTick = tickFunc;
-        this.onExit = exitFunc;
-    }
-    public void tick(int tickCount) { if (this.onTick != null && this.tokenCount > 0) this.onTick(this.petriNet);  }
-    public void enter()
-    {
-        this.tokenCount++;
-        if (this.onEntry != null) this.onEntry(this.petriNet);
-    }
-    public void exit()
-    {
-        if (this.tokenCount == 0) return;
-        this.tokenCount--;
-        if (this.onExit != null) this.onExit(this.petriNet);
-    }
+          public Place(String name, Action<PetriNet> entryFunc, Action<PetriNet> tickFunc, Action<PetriNet> exitFunc)
+          {
+              this.name = name;
+              this.onEntry = entryFunc;
+              this.onTick = tickFunc;
+              this.onExit = exitFunc;
+          }
+          public void tick(int tickCount) { if (this.onTick != null && this.tokenCount > 0) this.onTick(this.petriNet);  }
+          public void enter()
+          {
+              this.tokenCount++;
+              if (this.onEntry != null) this.onEntry(this.petriNet);
+          }
+          public void exit()
+          {
+              if (this.tokenCount == 0) return;
+              this.tokenCount--;
+              if (this.onExit != null) this.onExit(this.petriNet);
+          }
 
-}
+      }
 
-public class Transition
-{
-    public Place[] inFlows;
-    public Place[] outFlows;
-    public Func<PetriNet, bool> enabledTest;
-    public int timer;
-    public int timerRemaining;
-    public UpdateFrequency updateFrequency;
+      public class Transition
+      {
+          public Place[] inFlows;
+          public Place[] outFlows;
+          public Func<PetriNet, bool> enabledTest;
+          public int timer;
+          public int timerRemaining;
+          public UpdateFrequency updateFrequency;
 
-    public Transition(Place[] inFlows, Place[] outFlows, Func<PetriNet, bool> enabledTest, int timer = 1, UpdateFrequency updateFrequency = UpdateFrequency.Update100)
-    {
-        if (inFlows.Count() == 0 && outFlows.Count() == 0) throw new Exception("A transition must have at least one inFlow or one outFlow");
-        this.inFlows = inFlows;
-        this.outFlows = outFlows;
-        this.enabledTest = enabledTest;
-        this.timer = this.timerRemaining = timer;
-        this.updateFrequency = updateFrequency;
-    }
-    public PetriNet petriNet()
-    {
-        return (this.inFlows.Count() > 0 ? this.inFlows : this.outFlows)[0].petriNet;
-    }
-    public bool enabled()
-    {
-        foreach (Place p in this.inFlows) if (p.tokenCount == 0) return false;
-        if (this.enabledTest == null) return true;
-        return this.enabledTest(this.petriNet());
-    }
-    public UpdateFrequency requiredUpdateFrequency()
-    {
-        foreach (Place p in this.inFlows) if (p.tokenCount == 0) return UpdateFrequency.Update100;
-        return this.updateFrequency;
-    }
-    public bool tick(int tickCount)
-    {
-        if (!this.enabled()) return false;
-        this.timerRemaining -= tickCount;
-        if (this.timerRemaining > 0) return false;
-        resetTimer();
-        foreach (Place p in this.inFlows) p.exit();
-        foreach (Place p in this.outFlows) p.enter();
-        return true;
-    }
+          public Transition(Place[] inFlows, Place[] outFlows, Func<PetriNet, bool> enabledTest, int timer = 1, UpdateFrequency updateFrequency = UpdateFrequency.Update100)
+          {
+              if (inFlows.Count() == 0 && outFlows.Count() == 0) throw new Exception("A transition must have at least one inFlow or one outFlow");
+              this.inFlows = inFlows;
+              this.outFlows = outFlows;
+              this.enabledTest = enabledTest;
+              this.timer = this.timerRemaining = timer;
+              this.updateFrequency = updateFrequency;
+          }
+          public PetriNet petriNet()
+          {
+              return (this.inFlows.Count() > 0 ? this.inFlows : this.outFlows)[0].petriNet;
+          }
+          public bool enabled()
+          {
+              foreach (Place p in this.inFlows) if (p.tokenCount == 0) return false;
+              if (this.enabledTest == null) return true;
+              return this.enabledTest(this.petriNet());
+          }
+          public UpdateFrequency requiredUpdateFrequency()
+          {
+              foreach (Place p in this.inFlows) if (p.tokenCount == 0) return UpdateFrequency.Update100;
+              return this.updateFrequency;
+          }
+          public bool tick(int tickCount)
+          {
+              if (!this.enabled()) return false;
+              this.timerRemaining -= tickCount;
+              if (this.timerRemaining > 0) return false;
+              resetTimer();
+              foreach (Place p in this.inFlows) p.exit();
+              foreach (Place p in this.outFlows) p.enter();
+              return true;
+          }
 
-    public void resetTimer()
-    {
-        this.timerRemaining = this.timer;
-    }
-}
-]]></script>
+          public void resetTimer()
+          {
+              this.timerRemaining = this.timer;
+          }
+      }
+      ]]></script>
  </body>
 </html>

@@ -52,6 +52,51 @@ namespace IngameScript
                 for (int i = 0; i < marking.Count(); i++) this.P[i].tokenCount = marking[i];
                 foreach (Transition t in T) t.resetTimer();
             }
+            public void blockMoveTo(IMyMotorStator block, float toDeg, float speedRPM)
+            {
+                block.Enabled = true;
+                block.RotorLock = false;
+                float toRad = toDeg / 180 * ((float)Math.PI);
+                speedRPM = Math.Abs(speedRPM);
+                if (block.UpperLimitRad < block.Angle) block.UpperLimitRad = block.Angle;
+                if (block.LowerLimitRad > block.Angle) block.LowerLimitRad = block.Angle;
+                if (block.Angle < toRad)
+                {
+                    block.UpperLimitRad = toRad;
+                    block.TargetVelocityRPM = speedRPM;
+                } else if (block.Angle > toRad)
+                {
+                    block.LowerLimitRad = toRad;
+                    block.TargetVelocityRPM = -speedRPM;
+                } else
+                {
+                    block.UpperLimitRad = toRad;
+                    block.LowerLimitRad = toRad;
+                    block.TargetVelocityRPM = 0;
+                }
+            }
+            public void blockMoveTo(IMyPistonBase block, float to, float velocity)
+            {
+                velocity = Math.Abs(velocity);
+                block.Enabled = true;
+                if (block.CurrentPosition < to)
+                {
+                    block.Velocity = velocity;
+                }
+                else if (block.CurrentPosition > to)
+                {
+                    block.Velocity = -velocity;
+                }
+                else block.Velocity = 0;
+            }
+            public bool blockPositionIs(IMyMotorStator block, float posDeg, float precision = (float)0.1)
+            {
+                return Math.Abs(block.Angle * 180 / ((float) Math.PI) - posDeg) < Math.Abs(precision);
+            }
+            public bool blockPositionIs(IMyPistonBase block, float pos, float precision = (float) 0.1)
+            {
+                return Math.Abs(block.CurrentPosition - pos) < Math.Abs(precision);
+            }
             internal Place[] getPlace(string[] places)
             {
                 return places.ToList<string>().ConvertAll((p) => this.getPlace(p)).ToArray();

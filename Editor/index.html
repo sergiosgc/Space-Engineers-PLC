@@ -323,6 +323,7 @@ body {
     e.stopPropagation();
     zoomFactor = zoomFactor > 0 ? (1 - zoomFactor) : (1 / (1 + zoomFactor));
     let svg = document.getElementById('document');
+    let CTM = svg.getScreenCTM();
     let viewBox = svg.getAttribute('viewBox').split(' ').map((val) => parseInt(val));
     let newViewBox = [
         viewBox[0],
@@ -330,8 +331,8 @@ body {
         Math.round(viewBox[2] * zoomFactor),
         Math.round(viewBox[3] * zoomFactor)
     ];
-    newViewBox[0] += Math.round((viewBox[2] - newViewBox[2]) / 2);
-    newViewBox[1] += Math.round((viewBox[3] - newViewBox[3]) / 2);
+    newViewBox[0] += Math.round((viewBox[2] - newViewBox[2]) * (e.key ? 0.5 : (((e.clientX - CTM.e) / CTM.a) / viewBox[2])));
+    newViewBox[1] += Math.round((viewBox[3] - newViewBox[3]) * (e.key ? 0.5 : (((e.clientY - CTM.f) / CTM.d) / viewBox[3])));
     svg.setAttribute("viewBox", newViewBox.join(" "));
 });
 document.getElementById('document').addEventListener('mousedown', (evt) => {

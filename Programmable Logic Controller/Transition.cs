@@ -46,6 +46,7 @@ namespace IngameScript
             }
             public bool enabled()
             {
+                if (this.inFlows.Length == 0) return false;
                 foreach (Place p in this.inFlows) if (p.tokenCount == 0) return false;
                 if (this.enabledTest == null) return true;
                 return this.enabledTest(this.petriNet());

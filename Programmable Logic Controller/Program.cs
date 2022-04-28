@@ -87,9 +87,18 @@ namespace IngameScript
                     this.petriNet.tick(updateSource == UpdateType.Update10 ? 10 : updateSource == UpdateType.Update100 ? 100 : 1);
                     break;
                 default:
-                    readConfig();
-                    this.petriNet.setMarking(argument);
-                    Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
+                    if (argument.Length > 0)
+                    {
+                        if (argument[0] == '+')
+                        {
+                            argument = argument.Substring(1);
+                            foreach (Place p in petriNet.P) if (p.name == argument) p.tokenCount++;
+                        } else {
+                            readConfig();
+                            this.petriNet.setMarking(argument);
+                            Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
+                        }
+                    }
                     break;
             }
         }

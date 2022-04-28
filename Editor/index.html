@@ -940,14 +940,6 @@ window.redrawFlow = (flow) => {
 };
   </script>
   <script id="script-source-template" type="text/plain+csharp"><![CDATA[
-/*
- * R e a d m e
- * -----------
- * 
- * In this file you can include any instructions or other comments you want to have injected onto the 
- * top of your final script. You can safely delete this file if you do not want any such comments.
- */
-
 public PetriNet petriNet;
 
 public Program()
@@ -1013,9 +1005,18 @@ public void Main(string argument, UpdateType updateSource)
             this.petriNet.tick(updateSource == UpdateType.Update10 ? 10 : updateSource == UpdateType.Update100 ? 100 : 1);
             break;
         default:
-            readConfig();
-            this.petriNet.setMarking(argument);
-            Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
+            if (argument.Length > 0)
+            {
+                if (argument[0] == '+')
+                {
+                    argument = argument.Substring(1);
+                    foreach (Place p in petriNet.P) if (p.name == argument) p.tokenCount++;
+                } else {
+                    readConfig();
+                    this.petriNet.setMarking(argument);
+                    Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
+                }
+            }
             break;
     }
 }

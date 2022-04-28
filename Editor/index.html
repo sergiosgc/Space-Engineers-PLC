@@ -290,11 +290,14 @@ body {
       <p>If the transition is disabled while waiting for the delay, the timer is <b>not</b> reset. It will continue counting down from its present value whenever the transition gets enabled again.</p>
       <p>The enabled test is only executed if tokens are present on all input places</p>
       <p>The enabled test is a function that receives a petriNet object and must return a boolean (true if the transition is enabled)</p>
-      <p>The petriNet provides two important methods:</p>
+      <p>The petriNet provides three important methods:</p>
       <p>A method to retrieve a block by name</p>
       <code>petriNet.block&lt;TypeOfBlock&gt;("name_of_block")</code>
-      <p>and a method to retrieve all blocks of a given type from a block group, by group name, optionally acting on every group member. This method returns a C# list</p>
+      <p>a method to retrieve all blocks of a given type from a block group, by group name, optionally acting on every group member. This method returns a C# list</p>
       <code>petriNet.blocks&lt;TypeOfBlock&gt;("name_of_block_group", optional_function_to_apply_to_blocks)</code>
+      <p>and a method to check existence of materials in all grid inventories (connectivity is not tested)</p>
+      <code>(petriNet) => petryNet.checkInventory(new Dictionary&lt;string, int&gt;() { { "Ingot/Iron", 135 }, { "Component/Construction", 3 } })</code>
+      <p>Lookup material names <a href="https://github.com/malware-dev/MDK-SE/wiki/Type-Definition-Listing">at MDK</a></p>
       <p>Sample code:</p>
       <code>(petriNet) => petriNet.block&lt;IMyLandingGear&gt;("FrontLandingGear").IsLocked</code>
       <p>or</p>
@@ -937,6 +940,14 @@ window.redrawFlow = (flow) => {
 };
   </script>
   <script id="script-source-template" type="text/plain+csharp"><![CDATA[
+/*
+ * R e a d m e
+ * -----------
+ * 
+ * In this file you can include any instructions or other comments you want to have injected onto the 
+ * top of your final script. You can safely delete this file if you do not want any such comments.
+ */
+
 public PetriNet petriNet;
 
 public Program()
@@ -963,15 +974,16 @@ private void readConfig()
 private void readStorage()
 {
     if (Storage != ""
-        && Storage.Split(';').Count() == 2
-        && Storage.Split(';')[0].Split(',').Count() == this.petriNet.P.Count()
-        && Storage.Split(';')[1].Split(',').Count() == this.petriNet.T.Count())
+        && Storage.Split(';').Count() == 3
+        && Storage.Split(';')[0] == this.petriNet.hash()
+        && Storage.Split(';')[1].Split(',').Count() == this.petriNet.P.Count()
+        && Storage.Split(';')[2].Split(',').Count() == this.petriNet.T.Count())
         try
         {
             int i = 0;
-            foreach (int timerRemaining in Storage.Split(';')[1].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.T[i++].timerRemaining = timerRemaining;
+            foreach (int timerRemaining in Storage.Split(';')[2].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.T[i++].timerRemaining = timerRemaining;
             i = 0;
-            foreach (int tokenCount in Storage.Split(';')[0].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.P[i++].tokenCount = tokenCount;
+            foreach (int tokenCount in Storage.Split(';')[1].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.P[i++].tokenCount = tokenCount;
             Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
         }
         catch (Exception e)
@@ -983,9 +995,11 @@ private void readStorage()
 
 public void Save()
 {
-    Storage = String.Join(",", this.petriNet.P.ConvertAll((p) => p.tokenCount.ToString()))
-            + ";"
-            + String.Join(",", this.petriNet.T.ConvertAll((t) => t.timerRemaining.ToString()));
+    Storage = this.petriNet.hash()
+              + ";"
+              + String.Join(",", this.petriNet.P.ConvertAll((p) => p.tokenCount.ToString()))
+              + ";"
+              + String.Join(",", this.petriNet.T.ConvertAll((t) => t.timerRemaining.ToString()));
 }
 
 public void Main(string argument, UpdateType updateSource)
@@ -1016,6 +1030,7 @@ public class PetriNet
     public bool debug = false;
     public Dictionary<String, Object> memoizedBlock = new Dictionary<string, object>();
     public Dictionary<String, Object> memoizedBlocks = new Dictionary<string, Object>();
+    public List<IMyEntity> memoizedInventoryBlocks = new List<IMyEntity>();
     int ticksToResetMemoizedBlocks = 1000;
 
     public Program program;
@@ -1035,6 +1050,14 @@ public class PetriNet
     public void setMarking(int[] marking) {
         for (int i = 0; i < marking.Count(); i++) this.P[i].tokenCount = marking[i];
         foreach (Transition t in T) t.resetTimer();
+    }
+    public string hash()
+    {
+        string allPlaceNames = "";
+        foreach (Place p in P) allPlaceNames += p.name;
+        int hash = 0;
+        foreach (char c in Encoding.UTF8.GetBytes(allPlaceNames)) hash = (hash + c) % 1000000000;
+        return hash.ToString();
     }
     public void blockMoveTo(IMyMotorStator block, float toDeg, float speedRPM)
     {
@@ -1131,6 +1154,29 @@ public class PetriNet
         }
         return (T)this.memoizedBlock[name];
     }
+    public bool checkInventory(Dictionary<string, int> requested)
+    {
+        Dictionary<MyItemType, int> r = new Dictionary<MyItemType, int>();
+        foreach (KeyValuePair<string, int> kv in requested) r[MyItemType.Parse(kv.Key)] = kv.Value;
+        return checkInventory(r);
+    }
+    public bool checkInventory(Dictionary<MyItemType, int> requested)
+    {
+        Dictionary<MyItemType, int> missing = new Dictionary<MyItemType, int>(requested);
+        if (this.memoizedInventoryBlocks.Count == 0) this.program.GridTerminalSystem.GetBlocksOfType<IMyEntity>(this.memoizedInventoryBlocks, (block) => block.GetInventory() != null);
+        List<MyItemType> keys = missing.Keys.ToList<MyItemType>();
+        foreach (IMyEntity block in this.memoizedInventoryBlocks) for (int i = block.InventoryCount - 1; i >= 0; i--)
+            {
+                IMyInventory inventory = block.GetInventory(i);
+                foreach (MyItemType type in keys)
+                {
+                    if (missing[type] <= 0) continue;
+                    missing[type] -= inventory.GetItemAmount(type).ToIntSafe();
+                }
+            }
+        foreach (int missingValue in missing.Values) if (missingValue > 0) return false;
+        return true;
+    }
     public void tick(int tickCount)
     {
         this.ticksToResetMemoizedBlocks -= tickCount;
@@ -1138,6 +1184,7 @@ public class PetriNet
         {
             this.memoizedBlock.Clear();
             this.memoizedBlocks.Clear();
+            this.memoizedInventoryBlocks.Clear();
             this.ticksToResetMemoizedBlocks = 1000;
         }
         foreach (Place p in this.P) p.tick(tickCount);
@@ -1220,6 +1267,7 @@ public class Transition
     }
     public bool enabled()
     {
+        if (this.inFlows.Length == 0) return false;
         foreach (Place p in this.inFlows) if (p.tokenCount == 0) return false;
         if (this.enabledTest == null) return true;
         return this.enabledTest(this.petriNet());
@@ -1245,6 +1293,6 @@ public class Transition
         this.timerRemaining = this.timer;
     }
 }
-            ]]></script>
+]]></script>
  </body>
 </html>

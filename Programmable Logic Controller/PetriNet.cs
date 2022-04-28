@@ -32,6 +32,7 @@ namespace IngameScript
             public bool debug = false;
             public Dictionary<String, Object> memoizedBlock = new Dictionary<string, object>();
             public Dictionary<String, Object> memoizedBlocks = new Dictionary<string, Object>();
+            public List<IMyEntity> memoizedInventoryBlocks = new List<IMyEntity>();
             int ticksToResetMemoizedBlocks = 1000;
 
             public Program program;
@@ -51,6 +52,14 @@ namespace IngameScript
             public void setMarking(int[] marking) { 
                 for (int i = 0; i < marking.Count(); i++) this.P[i].tokenCount = marking[i];
                 foreach (Transition t in T) t.resetTimer();
+            }
+            public string hash()
+            {
+                string allPlaceNames = "";
+                foreach (Place p in P) allPlaceNames += p.name;
+                int hash = 0;
+                foreach (char c in Encoding.UTF8.GetBytes(allPlaceNames)) hash = (hash + c) % 1000000000;
+                return hash.ToString();
             }
             public void blockMoveTo(IMyMotorStator block, float toDeg, float speedRPM)
             {
@@ -147,6 +156,29 @@ namespace IngameScript
                 }
                 return (T)this.memoizedBlock[name];
             }
+            public bool checkInventory(Dictionary<string, int> requested)
+            {
+                Dictionary<MyItemType, int> r = new Dictionary<MyItemType, int>();
+                foreach (KeyValuePair<string, int> kv in requested) r[MyItemType.Parse(kv.Key)] = kv.Value;
+                return checkInventory(r);
+            }
+            public bool checkInventory(Dictionary<MyItemType, int> requested)
+            {
+                Dictionary<MyItemType, int> missing = new Dictionary<MyItemType, int>(requested);
+                if (this.memoizedInventoryBlocks.Count == 0) this.program.GridTerminalSystem.GetBlocksOfType<IMyEntity>(this.memoizedInventoryBlocks, (block) => block.GetInventory() != null);
+                List<MyItemType> keys = missing.Keys.ToList<MyItemType>();
+                foreach (IMyEntity block in this.memoizedInventoryBlocks) for (int i = block.InventoryCount - 1; i >= 0; i--)
+                    {
+                        IMyInventory inventory = block.GetInventory(i);
+                        foreach (MyItemType type in keys)
+                        {
+                            if (missing[type] <= 0) continue;
+                            missing[type] -= inventory.GetItemAmount(type).ToIntSafe();
+                        }
+                    }
+                foreach (int missingValue in missing.Values) if (missingValue > 0) return false;
+                return true;
+            }
             public void tick(int tickCount)
             {
                 this.ticksToResetMemoizedBlocks -= tickCount;
@@ -154,6 +186,7 @@ namespace IngameScript
                 {
                     this.memoizedBlock.Clear();
                     this.memoizedBlocks.Clear();
+                    this.memoizedInventoryBlocks.Clear();
                     this.ticksToResetMemoizedBlocks = 1000;
                 }
                 foreach (Place p in this.P) p.tick(tickCount);

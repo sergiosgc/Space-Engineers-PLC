@@ -48,15 +48,16 @@ namespace IngameScript
         private void readStorage()
         {
             if (Storage != ""
-                && Storage.Split(';').Count() == 2
-                && Storage.Split(';')[0].Split(',').Count() == this.petriNet.P.Count()
-                && Storage.Split(';')[1].Split(',').Count() == this.petriNet.T.Count())
+                && Storage.Split(';').Count() == 3
+                && Storage.Split(';')[0] == this.petriNet.hash()
+                && Storage.Split(';')[1].Split(',').Count() == this.petriNet.P.Count()
+                && Storage.Split(';')[2].Split(',').Count() == this.petriNet.T.Count())
                 try
                 {
                     int i = 0;
-                    foreach (int timerRemaining in Storage.Split(';')[1].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.T[i++].timerRemaining = timerRemaining;
+                    foreach (int timerRemaining in Storage.Split(';')[2].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.T[i++].timerRemaining = timerRemaining;
                     i = 0;
-                    foreach (int tokenCount in Storage.Split(';')[0].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.P[i++].tokenCount = tokenCount;
+                    foreach (int tokenCount in Storage.Split(';')[1].Split(',').ToList().ConvertAll((c) => int.Parse(c))) this.petriNet.P[i++].tokenCount = tokenCount;
                     Runtime.UpdateFrequency = this.petriNet.requiredUpdateFrequency();
                 }
                 catch (Exception e)
@@ -68,7 +69,9 @@ namespace IngameScript
 
         public void Save()
         {
-            Storage = String.Join(",", this.petriNet.P.ConvertAll((p) => p.tokenCount.ToString()))
+            Storage = this.petriNet.hash()
+                      + ";"
+                      + String.Join(",", this.petriNet.P.ConvertAll((p) => p.tokenCount.ToString()))
                       + ";"
                       + String.Join(",", this.petriNet.T.ConvertAll((t) => t.timerRemaining.ToString()));
         }

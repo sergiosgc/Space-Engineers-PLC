@@ -1178,6 +1178,23 @@ public class PetriNet
         foreach (int missingValue in missing.Values) if (missingValue > 0) return false;
         return true;
     }
+    public bool checkInventory(string type, int volume)
+    {
+        return checkInventory(MyItemType.Parse(type), volume);
+    }
+    public bool checkInventory(MyItemType type, int volume)
+    {
+        if (this.memoizedInventoryBlocks.Count == 0) this.program.GridTerminalSystem.GetBlocksOfType<IMyEntity>(this.memoizedInventoryBlocks, (block) => block.GetInventory() != null);
+        int availableVolume = 0;
+
+        foreach (IMyEntity block in this.memoizedInventoryBlocks) for (int i = block.InventoryCount - 1; i >= 0; i--)
+        {
+            IMyInventory inventory = block.GetInventory(i);
+            if (inventory.CanItemsBeAdded(1, type)) availableVolume += (inventory.MaxVolume - inventory.CurrentVolume).ToIntSafe();
+            if (availableVolume > volume) return true;
+        }
+        return false;
+    }
     public void tick(int tickCount)
     {
         this.ticksToResetMemoizedBlocks -= tickCount;

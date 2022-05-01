@@ -231,7 +231,7 @@ body {
    <rect
     style="fill:#ced8f7;fill-opacity:1;stroke:#ced8f7;stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
     width="60"
-    height="6"
+    height="7"
     x="170"
     y="280"
     ry="3"
@@ -689,6 +689,11 @@ document.getElementsByTagName("body").item(0).addEventListener('keydown', (e) =>
 new MutationEventAttacher(document.getElementById('markings'), 'css:span.marking span.delete', 'click', (e) => {
  e.preventDefault();
  e.stopPropagation();
+ document
+  .getElementById('document')
+  .queryElements('xpath:.//*[contains(@class, "place")]')
+  .filter((place) => place.getAttribute('id') != 'template-place')
+  .forEach((place) => place.markings = place.markings.filter((marking) => marking != e.target.parentNode.firstChild.textContent));
  e.target.parentNode.remove();
  redrawCurrentMarking();
 });
@@ -767,7 +772,7 @@ window.redrawCurrentMarking = function() {
         "x": [ "xpath:.//@x" ],
         "y": [ "xpath:.//@y" ],
       }
-      , { "x": 100, "y": 100, "offset": { "x": 30, "y": 6 } }
+      , { "x": 100, "y": 100, "offset": { "x": 30, "y": 4 } }
     );
     new MutationEventAttacher(document.getElementById('document'), "xpath:./*[contains(@class, 'place') or contains(@class, 'transition')]", "drag", (ev) => {
       ev.target.parentNode
@@ -793,13 +798,32 @@ document.getElementsByTagName("body").item(0).addEventListener('click', (e) => {
     let svg = document.getElementById('document');
     let CTM = svg.getScreenCTM();
  if (e.target != svg) return;
+    let coords = {
+        "x": (e.clientX - CTM.e) / CTM.a,
+        "y": (e.clientY - CTM.f) / CTM.d
+    };
+    let offset = {
+        "x": 0,
+        "y": 0
+    };
+    let grid = {
+        "x": 100,
+        "y": 100
+    };
+    if (!e.ctrlKey) {
+        coords.x = Math.round((coords.x + offset.x) / grid.x) * grid.x - offset.x;
+        coords.y = Math.round((coords.y + offset.y) / grid.y) * grid.y - offset.y;
+    } else {
+        coords.x -= offset.x;
+        coords.y -= offset.y;
+    }
  let place = svg.appendChild(document.getElementById('template-place').templateNode(true , {
-     "xpath:./*[local-name()='circle']/@cx": (e.clientX - CTM.e) / CTM.a,
-     "xpath:./*[local-name()='circle']/@cy": (e.clientY - CTM.f) / CTM.d,
-     "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cx": (e.clientX - CTM.e) / CTM.a,
-     "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cy": (e.clientY - CTM.f) / CTM.d + 10,
-     "xpath:./*[local-name()='text']/@x": (e.clientX - CTM.e) / CTM.a + 20 /* radius */ + 10 /* margin */,
-     "xpath:./*[local-name()='text']/@y": (e.clientY - CTM.f) / CTM.d + 20 /* radius */ - 3 /* underhang */,
+     "xpath:./*[local-name()='circle']/@cx": coords.x,
+     "xpath:./*[local-name()='circle']/@cy": coords.y,
+     "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cx": coords.x,
+     "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cy": coords.y + 10,
+     "xpath:./*[local-name()='text']/@x": coords.x + 20 /* radius */ + 10 /* margin */,
+     "xpath:./*[local-name()='text']/@y": coords.y + 20 /* radius */ - 3 /* underhang */,
  }));
  window.activeOperation = null;
 });
@@ -816,10 +840,29 @@ document.getElementsByTagName("body").item(0).addEventListener('click', (e) => {
  if (!window.activeOperation || window.activeOperation.type != 'insert-transition') return;
  let svg = document.getElementById('document');
  let CTM = svg.getScreenCTM();
- if (e.target != svg) return;
+    if (e.target != svg) return;
+    let coords = {
+        "x": (e.clientX - CTM.e) / CTM.a,
+        "y": (e.clientY - CTM.f) / CTM.d
+    };
+    let offset = {
+        "x": 60 / 2 /* width */,
+        "y": 8 / 2 /* height */,
+    };
+    let grid = {
+        "x": 100,
+        "y": 100
+    };
+    if (!e.ctrlKey) {
+        coords.x = Math.round((coords.x + offset.x) / grid.x) * grid.x - offset.x;
+        coords.y = Math.round((coords.y + offset.y) / grid.y) * grid.y - offset.y;
+    } else {
+        coords.x -= offset.x;
+        coords.y -= offset.y;
+    }
  let transition = svg.appendChild(document.getElementById('template-transition').templateNode(true , {
-     "xpath:./@x": (e.clientX - CTM.e) / CTM.a - 60 / 2 /* width */,
-     "xpath:./@y": (e.clientY - CTM.f) / CTM.d - 6 / 2 /* height */,
+     "xpath:./@x": coords.x,
+     "xpath:./@y": coords.y,
  }));
  window.activeOperation = null;
 });

@@ -585,7 +585,7 @@ document.getElementById('toolbar-save').addEventListener('click', function() {
        return {
          "enabledTest": transition.petriEnabledTest ?? "",
          "timer": parseInt(transition.petriTimer ?? "1"),
-         "updateFrequency": parseInt(transition.petriTimer ?? "1"),
+         "updateFrequency": parseInt(transition.petriUpdateFrequency ?? "1"),
          "x": parseInt(transition.queryElement("xpath:./@x").value),
          "y": parseInt(transition.queryElement("xpath:./@y").value),
          "inflows": document

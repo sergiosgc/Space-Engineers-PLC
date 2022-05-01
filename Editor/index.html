@@ -795,35 +795,35 @@ document.getElementsByTagName("body").item(0).addEventListener('keydown', (e) =>
 });
 document.getElementsByTagName("body").item(0).addEventListener('click', (e) => {
  if (!window.activeOperation || window.activeOperation.type != 'insert-place') return;
-    let svg = document.getElementById('document');
-    let CTM = svg.getScreenCTM();
+ let svg = document.getElementById('document');
+ let CTM = svg.getScreenCTM();
  if (e.target != svg) return;
-    let coords = {
-        "x": (e.clientX - CTM.e) / CTM.a,
-        "y": (e.clientY - CTM.f) / CTM.d
-    };
-    let offset = {
-        "x": 0,
-        "y": 0
-    };
-    let grid = {
-        "x": 100,
-        "y": 100
-    };
-    if (!e.ctrlKey) {
-        coords.x = Math.round((coords.x + offset.x) / grid.x) * grid.x - offset.x;
-        coords.y = Math.round((coords.y + offset.y) / grid.y) * grid.y - offset.y;
-    } else {
-        coords.x -= offset.x;
-        coords.y -= offset.y;
-    }
- let place = svg.appendChild(document.getElementById('template-place').templateNode(true , {
-     "xpath:./*[local-name()='circle']/@cx": coords.x,
-     "xpath:./*[local-name()='circle']/@cy": coords.y,
-     "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cx": coords.x,
-     "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cy": coords.y + 10,
-     "xpath:./*[local-name()='text']/@x": coords.x + 20 /* radius */ + 10 /* margin */,
-     "xpath:./*[local-name()='text']/@y": coords.y + 20 /* radius */ - 3 /* underhang */,
+ let coords = {
+  "x": (e.clientX - CTM.e) / CTM.a,
+  "y": (e.clientY - CTM.f) / CTM.d
+ };
+ let offset = {
+  "x": 0,
+  "y": 0
+ };
+ let grid = {
+  "x": 100,
+  "y": 100
+ };
+ if (!e.ctrlKey) {
+  coords.x = Math.round((coords.x + offset.x) / grid.x) * grid.x - offset.x;
+  coords.y = Math.round((coords.y + offset.y) / grid.y) * grid.y - offset.y;
+ } else {
+  coords.x -= offset.x;
+  coords.y -= offset.y;
+ }
+ svg.appendChild(document.getElementById('template-place').templateNode(true , {
+  "xpath:./*[local-name()='circle']/@cx": coords.x,
+  "xpath:./*[local-name()='circle']/@cy": coords.y,
+  "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cx": coords.x,
+  "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cy": coords.y + 10,
+  "xpath:./*[local-name()='text']/@x": coords.x + 20 /* radius */ + 10 /* margin */,
+  "xpath:./*[local-name()='text']/@y": coords.y + 20 /* radius */ - 3 /* underhang */,
  }));
  window.activeOperation = null;
 });
@@ -840,29 +840,29 @@ document.getElementsByTagName("body").item(0).addEventListener('click', (e) => {
  if (!window.activeOperation || window.activeOperation.type != 'insert-transition') return;
  let svg = document.getElementById('document');
  let CTM = svg.getScreenCTM();
-    if (e.target != svg) return;
-    let coords = {
-        "x": (e.clientX - CTM.e) / CTM.a,
-        "y": (e.clientY - CTM.f) / CTM.d
-    };
-    let offset = {
-        "x": 60 / 2 /* width */,
-        "y": 8 / 2 /* height */,
-    };
-    let grid = {
-        "x": 100,
-        "y": 100
-    };
-    if (!e.ctrlKey) {
-        coords.x = Math.round((coords.x + offset.x) / grid.x) * grid.x - offset.x;
-        coords.y = Math.round((coords.y + offset.y) / grid.y) * grid.y - offset.y;
-    } else {
-        coords.x -= offset.x;
-        coords.y -= offset.y;
-    }
- let transition = svg.appendChild(document.getElementById('template-transition').templateNode(true , {
-     "xpath:./@x": coords.x,
-     "xpath:./@y": coords.y,
+ if (e.target != svg) return;
+ let coords = {
+  "x": (e.clientX - CTM.e) / CTM.a,
+  "y": (e.clientY - CTM.f) / CTM.d
+ };
+ let offset = {
+  "x": 60 / 2 /* width */,
+  "y": 8 / 2 /* height */,
+ };
+ let grid = {
+  "x": 100,
+  "y": 100
+ };
+ if (!e.ctrlKey) {
+  coords.x = Math.round((coords.x + offset.x) / grid.x) * grid.x - offset.x;
+  coords.y = Math.round((coords.y + offset.y) / grid.y) * grid.y - offset.y;
+ } else {
+  coords.x -= offset.x;
+  coords.y -= offset.y;
+ }
+ svg.appendChild(document.getElementById('template-transition').templateNode(true , {
+  "xpath:./@x": coords.x,
+  "xpath:./@y": coords.y,
  }));
  window.activeOperation = null;
 });

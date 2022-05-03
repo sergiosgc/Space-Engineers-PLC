@@ -824,7 +824,6 @@ document.getElementsByTagName("body").item(0).addEventListener('click', (e) => {
   .filter( (place) => place.getAttribute('id') != 'template-place' )
   .filter( (place) => place.petriName == "Place " + nameIndex )
   .length) nameIndex++;
- console.log(nameIndex);
  let place = svg.appendChild(document.getElementById('template-place').templateNode(true , {
   "xpath:./*[local-name()='circle']/@cx": coords.x,
   "xpath:./*[local-name()='circle']/@cy": coords.y,

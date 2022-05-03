@@ -817,14 +817,24 @@ document.getElementsByTagName("body").item(0).addEventListener('click', (e) => {
   coords.x -= offset.x;
   coords.y -= offset.y;
  }
- svg.appendChild(document.getElementById('template-place').templateNode(true , {
+ let nameIndex = 1;
+ while(0 < document
+  .getElementById('document')
+  .queryElements('xpath:.//*[contains(@class, "place")]') 
+  .filter( (place) => place.getAttribute('id') != 'template-place' )
+  .filter( (place) => place.petriName == "Place " + nameIndex )
+  .length) nameIndex++;
+ console.log(nameIndex);
+ let place = svg.appendChild(document.getElementById('template-place').templateNode(true , {
   "xpath:./*[local-name()='circle']/@cx": coords.x,
   "xpath:./*[local-name()='circle']/@cy": coords.y,
   "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cx": coords.x,
   "xpath:./*[local-name()='circle' and contains(@class, 'mark')]/@cy": coords.y + 10,
   "xpath:./*[local-name()='text']/@x": coords.x + 20 /* radius */ + 10 /* margin */,
   "xpath:./*[local-name()='text']/@y": coords.y + 20 /* radius */ - 3 /* underhang */,
+  "xpath:./*[local-name()='text']": "Place " + nameIndex,
  }));
+ place.petriName = "Place " + nameIndex;
  window.activeOperation = null;
 });
 // Insert transition interaction

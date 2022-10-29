@@ -28,8 +28,9 @@ namespace IngameScript
             public List<Transition> T = new List<Transition>();
             public Dictionary<String, int[]> markings = new Dictionary<string, int[]>();
             public Dictionary<String, String> variables = new Dictionary<String, String>();
+            public Dictionary<String, float> floatStore = new Dictionary<String, float>();
             public UpdateFrequency updateFrequency = UpdateFrequency.None;
-            public bool debug = false;
+            public bool debug = true;
             public Dictionary<String, Object> memoizedBlock = new Dictionary<string, object>();
             public Dictionary<String, Object> memoizedBlocks = new Dictionary<string, Object>();
             public List<IMyEntity> memoizedInventoryBlocks = new List<IMyEntity>();
@@ -61,7 +62,7 @@ namespace IngameScript
                 foreach (char c in Encoding.UTF8.GetBytes(allPlaceNames)) hash = (hash + c) % 1000000000;
                 return hash.ToString();
             }
-            public void blockMoveTo(IMyMotorStator block, float toDeg, float speedRPM)
+            public void blockMoveTo(IMyMotorStator block, float toDeg, float speedRPM, bool changeLimits = true)
             {
                 block.Enabled = true;
                 block.RotorLock = false;
@@ -73,16 +74,16 @@ namespace IngameScript
                 if (block.LowerLimitRad > currentAngle) block.LowerLimitRad = currentAngle;
                 if (currentAngle < toRad)
                 {
-                    block.UpperLimitRad = toRad;
+                    if (changeLimits) block.UpperLimitRad = toRad;
                     block.TargetVelocityRPM = speedRPM;
                 } else if (currentAngle > toRad)
                 {
-                    block.LowerLimitRad = toRad;
+                    if (changeLimits) block.LowerLimitRad = toRad;
                     block.TargetVelocityRPM = -speedRPM;
                 } else
                 {
-                    block.UpperLimitRad = toRad;
-                    block.LowerLimitRad = toRad;
+                    if (changeLimits) block.UpperLimitRad = toRad;
+                    if (changeLimits) block.LowerLimitRad = toRad;
                     block.TargetVelocityRPM = 0;
                 }
             }
@@ -109,6 +110,16 @@ namespace IngameScript
             public bool blockPositionIs(IMyPistonBase block, float pos, float precision = (float) 0.1)
             {
                 return Math.Abs(block.CurrentPosition - pos) < Math.Abs(precision);
+            }
+            public bool blocksAreAt(List<IMyPistonBase> list, float pos, float precision = (float)0.1)
+            {
+                foreach (IMyPistonBase block in list) if (!blockPositionIs(block, pos, precision)) return false;
+                return true;
+            }
+            public bool blocksAreAt(List<IMyMotorStator> list, float pos, float precision = (float)0.1)
+            {
+                foreach (IMyMotorStator block in list) if (!blockPositionIs(block, pos, precision)) return false;
+                return true;
             }
             internal Place[] getPlace(string[] places)
             {
@@ -232,3 +243,4 @@ namespace IngameScript
         }
     }
 }
+
